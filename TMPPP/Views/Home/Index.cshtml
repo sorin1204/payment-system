@@ -1,0 +1,91 @@
+@model HomeViewModel
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="toast">@Model.Message</div>
+}
+
+<section class="grid">
+    <div class="card">
+        <h2>Create invoice</h2>
+        <form asp-action="CreateInvoice" method="post">
+            <label>Customer id (optional)</label>
+            <input name="customerId" placeholder="Guid or empty" />
+            <label>Total</label>
+            <input name="total" placeholder="120.50" />
+            <label>Currency</label>
+            <input name="currency" value="RON" />
+            <button type="submit">Create invoice</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Create payment</h2>
+        <form asp-action="CreatePayment" method="post">
+            <label>Invoice id</label>
+            <input name="invoiceId" placeholder="Guid" />
+            <label>Amount</label>
+            <input name="amount" placeholder="120.50" />
+            <label>Currency</label>
+            <input name="currency" value="RON" />
+            <button type="submit">Create payment</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Process payment</h2>
+        <form asp-action="ProcessPayment" method="post">
+            <label>Payment id</label>
+            <input name="paymentId" placeholder="Guid" />
+            <label>Method</label>
+            <select name="method">
+                <option value="card">Card</option>
+                <option value="bank">Bank transfer</option>
+                <option value="cash">Cash</option>
+            </select>
+            <button type="submit">Process</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Invoices</h2>
+        <div class="list">
+            @if (Model.Invoices.Count == 0)
+            {
+                <div class="empty">No invoices yet.</div>
+            }
+            else
+            {
+                foreach (var invoice in Model.Invoices)
+                {
+                    <div class="row">
+                        <div class="id">@invoice.Id</div>
+                        <div>@invoice.Total.Amount @invoice.Total.Currency</div>
+                        <div>Due: @invoice.DueDate.ToString("yyyy-MM-dd")</div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Payments</h2>
+        <div class="list">
+            @if (Model.Payments.Count == 0)
+            {
+                <div class="empty">No payments yet.</div>
+            }
+            else
+            {
+                foreach (var payment in Model.Payments)
+                {
+                    <div class="row">
+                        <div class="id">@payment.Id</div>
+                        <div>@payment.Amount.Amount @payment.Amount.Currency</div>
+                        <div>@payment.Status</div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</section>
