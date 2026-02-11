@@ -1,11 +1,16 @@
 namespace TMPPP.Domain.ValueObjects;
 
-public readonly struct Money
+public sealed class Money
 {
     public Money(decimal amount, string currency)
     {
         Amount = amount;
         Currency = currency;
+    }
+
+    private Money()
+    {
+        Currency = string.Empty;
     }
 
     public decimal Amount { get; }
