@@ -5,26 +5,25 @@ namespace TMPPP.Infrastructure.InMemory;
 
 public sealed class InMemoryInvoiceRepository : IInvoiceRepository
 {
-    private readonly Dictionary<Guid, Invoice> _invoices = new();
+    private readonly Dictionary<Guid, Invoice> _items = new();
 
     public Invoice? GetById(Guid id)
     {
-        _invoices.TryGetValue(id, out var invoice);
-        return invoice;
+        return _items.TryGetValue(id, out var invoice) ? invoice : null;
     }
 
     public void Add(Invoice invoice)
     {
-        _invoices[invoice.Id] = invoice;
+        _items[invoice.Id] = invoice;
     }
 
     public void Update(Invoice invoice)
     {
-        _invoices[invoice.Id] = invoice;
+        _items[invoice.Id] = invoice;
     }
 
     public IReadOnlyCollection<Invoice> GetAll()
     {
-        return _invoices.Values.ToList();
+        return _items.Values.ToList();
     }
 }

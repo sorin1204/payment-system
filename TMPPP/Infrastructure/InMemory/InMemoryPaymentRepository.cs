@@ -5,26 +5,20 @@ namespace TMPPP.Infrastructure.InMemory;
 
 public sealed class InMemoryPaymentRepository : IPaymentRepository
 {
-    private readonly Dictionary<Guid, Payment> _payments = new();
+    private readonly Dictionary<Guid, Payment> _items = new();
 
     public Payment? GetById(Guid id)
     {
-        _payments.TryGetValue(id, out var payment);
-        return payment;
+        return _items.TryGetValue(id, out var payment) ? payment : null;
     }
 
     public void Add(Payment payment)
     {
-        _payments[payment.Id] = payment;
+        _items[payment.Id] = payment;
     }
 
     public void Update(Payment payment)
     {
-        _payments[payment.Id] = payment;
-    }
-
-    public IReadOnlyCollection<Payment> GetAll()
-    {
-        return _payments.Values.ToList();
+        _items[payment.Id] = payment;
     }
 }
