@@ -7,17 +7,20 @@ public class AppController
     private readonly InvoiceController _invoiceController;
     private readonly PaymentController _paymentController;
     private readonly BurgerController _burgerController;
+    private readonly PrototypeController _prototypeController;
     private readonly MainMenuView _view;
 
     public AppController(
         InvoiceController invoiceController,
         PaymentController paymentController,
         BurgerController burgerController,
+        PrototypeController prototypeController,
         MainMenuView view)
     {
         _invoiceController = invoiceController;
         _paymentController = paymentController;
         _burgerController = burgerController;
+        _prototypeController = prototypeController;
         _view = view;
     }
 
@@ -48,6 +51,9 @@ public class AppController
                     _burgerController.CreateBurger();
                     break;
                 case "6":
+                    _prototypeController.RunLaptopPrototypeDemo();
+                    break;
+                case "7":
                     running = false;
                     break;
                 default:

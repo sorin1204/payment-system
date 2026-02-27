@@ -29,7 +29,13 @@ void RunConsole()
     var invoiceController = new InvoiceController(invoiceRepository, view);
     var paymentController = new PaymentController(paymentService, view);
     var burgerController = new BurgerController(view);
-    var appController = new AppController(invoiceController, paymentController, burgerController, view);
+    var prototypeController = new PrototypeController(view);
+    var appController = new AppController(
+        invoiceController,
+        paymentController,
+        burgerController,
+        prototypeController,
+        view);
 
     appController.Run();
 }

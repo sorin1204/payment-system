@@ -1,4 +1,5 @@
 using TMPPP.Domain.Entities;
+using TMPPP.Domain.Prototypes;
 using TMPPP.Domain.Builders;
 
 namespace TMPPP.Views;
@@ -17,7 +18,8 @@ public class MainMenuView
         Console.WriteLine("3) Process payment");
         Console.WriteLine("4) List invoices");
         Console.WriteLine("5) Builder demo (custom burger)");
-        Console.WriteLine("6) Exit");
+        Console.WriteLine("6) Prototype demo (laptop clone)");
+        Console.WriteLine("7) Exit");
     }
 
     public string? ReadChoice()
@@ -85,5 +87,22 @@ public class MainMenuView
         Console.WriteLine($"Fries: {(burger.HasFries ? "Yes" : "No")}");
         Console.WriteLine($"Drink: {(burger.HasDrink ? "Yes" : "No")}");
         Console.WriteLine($"Estimated price: {burger.CalculatePrice():0.00} RON");
+    }
+
+    public void ShowPrototypeComparison(CustomLaptop original, CustomLaptop shallowCopy, CustomLaptop deepCopy)
+    {
+        ShowMessage("Prototype demo (shallow vs deep copy):");
+        ShowMessage($"Original: {FormatLaptop(original)}");
+        ShowMessage($"Shallow clone (after edits): {FormatLaptop(shallowCopy)}");
+        ShowMessage($"Deep clone (after edits): {FormatLaptop(deepCopy)}");
+        ShowMessage("Observation: original changed after shallow clone edits, but not after deep clone edits.");
+    }
+
+    private static string FormatLaptop(CustomLaptop laptop)
+    {
+        var config = laptop.Configuration;
+        var accessories = laptop.Accessories.Count == 0 ? "none" : string.Join(", ", laptop.Accessories);
+        return
+            $"{laptop.Model} | CPU: {config.Cpu}, RAM: {config.RamGb}GB, Storage: {config.StorageGb}GB | Accessories: {accessories}";
     }
 }
