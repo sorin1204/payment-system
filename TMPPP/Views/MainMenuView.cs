@@ -19,7 +19,8 @@ public class MainMenuView
         Console.WriteLine("4) List invoices");
         Console.WriteLine("5) Builder demo (custom burger)");
         Console.WriteLine("6) Prototype demo (laptop clone)");
-        Console.WriteLine("7) Exit");
+        Console.WriteLine("7) Singleton demo (DB connection)");
+        Console.WriteLine("8) Exit");
     }
 
     public string? ReadChoice()

@@ -7,6 +7,8 @@ using TMPPP.Domain.Services;
 using TMPPP.Domain.ValueObjects;
 using TMPPP.Views;
 
+const string DefaultSqliteConnectionString = "Data Source=payments.db";
+
 if (args.Any(x => string.Equals(x, "--api", StringComparison.OrdinalIgnoreCase)))
 {
     RunApi(args);
@@ -17,7 +19,7 @@ RunConsole();
 
 void RunConsole()
 {
-    using var factory = CreateFactory();
+    using var factory = CreateFactory(DefaultSqliteConnectionString);
 
     var paymentRepository = factory.CreatePaymentRepository();
     var invoiceRepository = factory.CreateInvoiceRepository();
@@ -30,11 +32,13 @@ void RunConsole()
     var paymentController = new PaymentController(paymentService, view);
     var burgerController = new BurgerController(view);
     var prototypeController = new PrototypeController(view);
+    var singletonController = new SingletonController(view, DefaultSqliteConnectionString);
     var appController = new AppController(
         invoiceController,
         paymentController,
         burgerController,
         prototypeController,
+        singletonController,
         view);
 
     appController.Run();
@@ -48,7 +52,7 @@ void RunApi(string[] runArgs)
 
     var app = builder.Build();
 
-    var factory = CreateFactory();
+    var factory = CreateFactory(DefaultSqliteConnectionString);
     app.Lifetime.ApplicationStopping.Register(factory.Dispose);
 
     var paymentRepository = factory.CreatePaymentRepository();
@@ -170,12 +174,12 @@ void RunApi(string[] runArgs)
     app.Run();
 }
 
-static PaymentDomainFactory CreateFactory()
+static PaymentDomainFactory CreateFactory(string sqliteConnectionString)
 {
     var mode = Environment.GetEnvironmentVariable("PAYMENT_STORAGE")?.Trim().ToLowerInvariant();
     return mode == "memory"
         ? new InMemoryPaymentDomainFactory()
-        : new SqlitePaymentDomainFactory("Data Source=payments.db");
+        : new SqlitePaymentDomainFactory(sqliteConnectionString);
 }
 
 static PaymentMethodCreator ResolveCreator(string? methodChoice)

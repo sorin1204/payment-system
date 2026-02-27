@@ -11,8 +11,9 @@ public sealed class SqlitePaymentDomainFactory : PaymentDomainFactory
 
     public SqlitePaymentDomainFactory(string connectionString)
     {
+        var singletonConnection = SqliteConnectionManager.Instance.GetConnection(connectionString);
         var dbOptions = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite(connectionString)
+            .UseSqlite(singletonConnection)
             .Options;
 
         _dbContext = new AppDbContext(dbOptions);

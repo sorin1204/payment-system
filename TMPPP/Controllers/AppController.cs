@@ -8,6 +8,7 @@ public class AppController
     private readonly PaymentController _paymentController;
     private readonly BurgerController _burgerController;
     private readonly PrototypeController _prototypeController;
+    private readonly SingletonController _singletonController;
     private readonly MainMenuView _view;
 
     public AppController(
@@ -15,12 +16,14 @@ public class AppController
         PaymentController paymentController,
         BurgerController burgerController,
         PrototypeController prototypeController,
+        SingletonController singletonController,
         MainMenuView view)
     {
         _invoiceController = invoiceController;
         _paymentController = paymentController;
         _burgerController = burgerController;
         _prototypeController = prototypeController;
+        _singletonController = singletonController;
         _view = view;
     }
 
@@ -54,6 +57,9 @@ public class AppController
                     _prototypeController.RunLaptopPrototypeDemo();
                     break;
                 case "7":
+                    _singletonController.RunSingletonDemo();
+                    break;
+                case "8":
                     running = false;
                     break;
                 default:
