@@ -6,15 +6,18 @@ public class AppController
 {
     private readonly InvoiceController _invoiceController;
     private readonly PaymentController _paymentController;
+    private readonly BurgerController _burgerController;
     private readonly MainMenuView _view;
 
     public AppController(
         InvoiceController invoiceController,
         PaymentController paymentController,
+        BurgerController burgerController,
         MainMenuView view)
     {
         _invoiceController = invoiceController;
         _paymentController = paymentController;
+        _burgerController = burgerController;
         _view = view;
     }
 
@@ -42,6 +45,9 @@ public class AppController
                     _invoiceController.ListInvoices();
                     break;
                 case "5":
+                    _burgerController.CreateBurger();
+                    break;
+                case "6":
                     running = false;
                     break;
                 default:
