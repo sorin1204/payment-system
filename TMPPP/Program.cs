@@ -7,6 +7,7 @@ using TMPPP.Domain.Factories.AbstractFactory;
 using TMPPP.Domain.Services;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Composite;
+using TMPPP.Domain.Structural.Facade;
 using TMPPP.Domain.ValueObjects;
 using TMPPP.Views;
 
@@ -36,6 +37,8 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var view = new MainMenuView();
     var adapterController = new AdapterController(view);
     var compositeController = new CompositeController(view);
+    var paymentCheckoutFacade = new PaymentCheckoutFacade(customerRepository, invoiceRepository, paymentService);
+    var facadeController = new FacadeController(view, paymentCheckoutFacade);
     var invoiceController = new InvoiceController(invoiceRepository, view);
     var paymentController = new PaymentController(paymentService, view);
     var burgerController = new BurgerController(view);
@@ -44,6 +47,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var appController = new AppController(
         adapterController,
         compositeController,
+        facadeController,
         invoiceController,
         paymentController,
         burgerController,
@@ -75,6 +79,7 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
     var notificationService = factory.CreateNotificationService();
     var paymentProcessor = factory.CreatePaymentProcessor(paymentRepository, notificationService);
     var paymentService = factory.CreatePaymentService(paymentRepository, invoiceRepository, paymentProcessor);
+    var paymentCheckoutFacade = new PaymentCheckoutFacade(customerRepository, invoiceRepository, paymentService);
     var useMemoryStorage = Environment.GetEnvironmentVariable("PAYMENT_STORAGE")?.Trim().ToLowerInvariant() == "memory";
 
     app.UseDefaultFiles();
@@ -132,6 +137,43 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
             rendered = batch.Render(),
             explanation = "Platile individuale si loturile de plati sunt tratate uniform prin aceeasi interfata."
         });
+    });
+
+    app.MapPost("/api/patterns/facade-checkout", ([FromBody] FacadeCheckoutApiRequest request) =>
+    {
+        try
+        {
+            var response = paymentCheckoutFacade.ExecuteCheckout(new CheckoutRequest(
+                request.CustomerName,
+                request.CustomerEmail,
+                request.Amount,
+                string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency,
+                request.PaymentMethod,
+                request.DueDateUtc));
+
+            return Results.Ok(new
+            {
+                pattern = "Facade",
+                operation = "One-step checkout",
+                response.CustomerId,
+                response.InvoiceId,
+                response.PaymentId,
+                response.Success,
+                response.Message,
+                response.PaymentMethod,
+                response.Amount,
+                response.Currency,
+                explanation = "Fațada ascunde pașii interni: client, factură, plată și procesare."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
     });
 
     app.MapPost("/api/patterns/composite-build", ([FromBody] BuildCompositeBatchRequest request) =>
@@ -442,6 +484,14 @@ internal sealed record BuildCompositeBatchRequest(string BatchName, string? Curr
 internal sealed record CompositeGroupRequest(string GroupName, List<CompositePaymentRequest>? Payments);
 
 internal sealed record CompositePaymentRequest(string Name, decimal Amount);
+
+internal sealed record FacadeCheckoutApiRequest(
+    string CustomerName,
+    string CustomerEmail,
+    decimal Amount,
+    string? Currency,
+    string PaymentMethod,
+    DateTime? DueDateUtc);
 
 internal sealed record InvoiceDto(Guid Id, Guid CustomerId, decimal TotalAmount, string Currency, DateTime DueDateUtc);
 

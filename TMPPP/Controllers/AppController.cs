@@ -6,6 +6,7 @@ public class AppController
 {
     private readonly AdapterController _adapterController;
     private readonly CompositeController _compositeController;
+    private readonly FacadeController _facadeController;
     private readonly InvoiceController _invoiceController;
     private readonly PaymentController _paymentController;
     private readonly BurgerController _burgerController;
@@ -16,6 +17,7 @@ public class AppController
     public AppController(
         AdapterController adapterController,
         CompositeController compositeController,
+        FacadeController facadeController,
         InvoiceController invoiceController,
         PaymentController paymentController,
         BurgerController burgerController,
@@ -25,6 +27,7 @@ public class AppController
     {
         _adapterController = adapterController;
         _compositeController = compositeController;
+        _facadeController = facadeController;
         _invoiceController = invoiceController;
         _paymentController = paymentController;
         _burgerController = burgerController;
@@ -51,27 +54,30 @@ public class AppController
                     _compositeController.RunPaymentBatchDemo();
                     break;
                 case "3":
-                    _invoiceController.CreateInvoice();
+                    _facadeController.RunCheckoutDemo();
                     break;
                 case "4":
-                    _paymentController.CreatePayment();
+                    _invoiceController.CreateInvoice();
                     break;
                 case "5":
-                    _paymentController.ProcessPayment();
+                    _paymentController.CreatePayment();
                     break;
                 case "6":
-                    _invoiceController.ListInvoices();
+                    _paymentController.ProcessPayment();
                     break;
                 case "7":
-                    _burgerController.CreateBurger();
+                    _invoiceController.ListInvoices();
                     break;
                 case "8":
-                    _prototypeController.RunLaptopPrototypeDemo();
+                    _burgerController.CreateBurger();
                     break;
                 case "9":
-                    _singletonController.RunSingletonDemo();
+                    _prototypeController.RunLaptopPrototypeDemo();
                     break;
                 case "10":
+                    _singletonController.RunSingletonDemo();
+                    break;
+                case "11":
                     running = false;
                     break;
                 default:

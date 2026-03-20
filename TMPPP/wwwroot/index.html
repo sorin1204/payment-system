@@ -312,6 +312,39 @@
       </div>
     </article>
 
+    <article class="card accent-card">
+      <h2>Facade Pattern Demo</h2>
+      <label>Scenariu</label>
+      <div class="note">Un singur checkout ascunde subsistemul intern: creare client, creare factura, creare plata si procesare.</div>
+
+      <label for="facadeCustomerName">Customer name</label>
+      <input id="facadeCustomerName" value="Andrei Popescu" />
+
+      <label for="facadeCustomerEmail">Customer email</label>
+      <input id="facadeCustomerEmail" value="andrei.popescu@example.com" />
+
+      <div class="mini-grid">
+        <div>
+          <label for="facadeAmount">Amount</label>
+          <input id="facadeAmount" type="number" min="0.01" step="0.01" value="199.99" />
+        </div>
+        <div>
+          <label for="facadeCurrency">Currency</label>
+          <input id="facadeCurrency" value="RON" />
+        </div>
+        <div>
+          <label for="facadeMethod">Method</label>
+          <select id="facadeMethod">
+            <option value="card">card</option>
+            <option value="bank">bank</option>
+            <option value="cash">cash</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btnFacadeCheckout">Run Facade Checkout</button>
+    </article>
+
     <article class="card">
       <h2>1) Create Invoice</h2>
       <label for="invoiceAmount">Amount</label>
@@ -545,6 +578,26 @@
   document.getElementById('btnApiInfo').addEventListener('click', () => callApi('/api/info'));
   document.getElementById('btnAdapterDemo').addEventListener('click', () => callApi('/api/patterns/adapter-demo'));
   document.getElementById('btnCompositeDemo').addEventListener('click', () => callApi('/api/patterns/composite-demo'));
+  document.getElementById('btnFacadeCheckout').addEventListener('click', async () => {
+    const customerName = document.getElementById('facadeCustomerName').value.trim();
+    const customerEmail = document.getElementById('facadeCustomerEmail').value.trim();
+    const amount = Number(document.getElementById('facadeAmount').value);
+    const currency = document.getElementById('facadeCurrency').value.trim() || 'RON';
+    const paymentMethod = document.getElementById('facadeMethod').value;
+
+    if (!customerName || !customerEmail || !Number.isFinite(amount) || amount <= 0) {
+      setStatus('Completeaza datele pentru checkout facade.', true);
+      return;
+    }
+
+    await callApi('/api/patterns/facade-checkout', 'POST', {
+      customerName,
+      customerEmail,
+      amount,
+      currency,
+      paymentMethod
+    });
+  });
   document.getElementById('btnAddCompositePayment').addEventListener('click', () => {
     const groupName = document.getElementById('compositeGroupName').value.trim();
     const paymentName = document.getElementById('compositePaymentName').value.trim();

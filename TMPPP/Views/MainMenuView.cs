@@ -2,6 +2,7 @@ using TMPPP.Domain.Entities;
 using TMPPP.Domain.Prototypes;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Composite;
+using TMPPP.Domain.Structural.Facade;
 using TMPPP.Domain.Builders;
 
 namespace TMPPP.Views;
@@ -17,14 +18,15 @@ public class MainMenuView
     {
         Console.WriteLine("1) Adapter demo (payment gateways)");
         Console.WriteLine("2) Composite demo (payment batches)");
-        Console.WriteLine("3) Create invoice");
-        Console.WriteLine("4) Create payment");
-        Console.WriteLine("5) Process payment");
-        Console.WriteLine("6) List invoices");
-        Console.WriteLine("7) Builder demo (custom burger)");
-        Console.WriteLine("8) Prototype demo (laptop clone)");
-        Console.WriteLine("9) Singleton demo (DB connection)");
-        Console.WriteLine("10) Exit");
+        Console.WriteLine("3) Facade demo (one-step checkout)");
+        Console.WriteLine("4) Create invoice");
+        Console.WriteLine("5) Create payment");
+        Console.WriteLine("6) Process payment");
+        Console.WriteLine("7) List invoices");
+        Console.WriteLine("8) Builder demo (custom burger)");
+        Console.WriteLine("9) Prototype demo (laptop clone)");
+        Console.WriteLine("10) Singleton demo (DB connection)");
+        Console.WriteLine("11) Exit");
     }
 
     public string? ReadChoice()
@@ -80,6 +82,17 @@ public class MainMenuView
     {
         ShowMessage("Composite demo:");
         ShowMessage(batch.Render());
+    }
+
+    public void ShowFacadeDemo(CheckoutRequest request, CheckoutResponse response)
+    {
+        ShowMessage("Facade demo:");
+        ShowMessage(
+            $"Input: {request.CustomerName} | {request.Amount:0.00} {request.Currency} | method {request.PaymentMethod}");
+        ShowMessage($"Customer created: {response.CustomerId}");
+        ShowMessage($"Invoice created: {response.InvoiceId}");
+        ShowMessage($"Payment created: {response.PaymentId}");
+        ShowMessage($"Checkout result: {(response.Success ? "Success" : "Failed")} - {response.Message}");
     }
 
     public void ShowInvoices(IReadOnlyCollection<Invoice> invoices)

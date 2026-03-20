@@ -2,7 +2,7 @@
 
 Acest API ruleaza peste aceeasi logica de business existenta (invoice + payment + process).
 Include si UI web pentru demo, astfel incat poti arata totul din browser.
-UI-ul include acum sectiuni dedicate pentru `Adapter Pattern Demo` si `Composite Pattern Demo`.
+UI-ul include acum sectiuni dedicate pentru `Adapter Pattern Demo`, `Composite Pattern Demo` si `Facade Pattern Demo`.
 
 ## Pornire API
 
@@ -28,6 +28,7 @@ Swagger UI: `http://localhost:5000/swagger`
 - `GET /api/patterns/adapter-demo`
 - `GET /api/patterns/composite-demo`
 - `POST /api/patterns/composite-build`
+- `POST /api/patterns/facade-checkout`
 - `POST /api/invoices`
 - `GET /api/invoices`
 - `POST /api/payments`
@@ -39,11 +40,12 @@ Swagger UI: `http://localhost:5000/swagger`
 1. Deschide `http://localhost:5000/`
 2. Apasa `Run Adapter Demo` pentru a prezenta integrarea unitara PayPal / Stripe / Google Pay
 3. Foloseste `Composite Pattern Demo` pentru a adauga plati pe grupuri si a construi un batch nou direct din UI
-4. Optional: `Run Composite Demo` pentru exemplul presetat
-5. Apasa `Create Invoice` (se completeaza automat `Invoice ID` la payment)
-6. Apasa `Create Payment` (se completeaza automat `Payment ID` la process)
-7. Apasa `Process Payment`
-8. Optional: `Run Full Demo` pentru flux complet intr-un click
+4. Foloseste `Facade Pattern Demo` pentru a rula un checkout complet printr-un singur formular
+5. Optional: `Run Composite Demo` pentru exemplul presetat
+6. Apasa `Create Invoice` (se completeaza automat `Invoice ID` la payment)
+7. Apasa `Create Payment` (se completeaza automat `Payment ID` la process)
+8. Apasa `Process Payment`
+9. Optional: `Run Full Demo` pentru flux complet intr-un click
 
 ## Demo rapid (cu curl)
 
