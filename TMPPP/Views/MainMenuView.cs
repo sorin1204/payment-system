@@ -1,5 +1,6 @@
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Prototypes;
+using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Builders;
 
 namespace TMPPP.Views;
@@ -13,14 +14,15 @@ public class MainMenuView
 
     public void ShowMainMenu()
     {
-        Console.WriteLine("1) Create invoice");
-        Console.WriteLine("2) Create payment");
-        Console.WriteLine("3) Process payment");
-        Console.WriteLine("4) List invoices");
-        Console.WriteLine("5) Builder demo (custom burger)");
-        Console.WriteLine("6) Prototype demo (laptop clone)");
-        Console.WriteLine("7) Singleton demo (DB connection)");
-        Console.WriteLine("8) Exit");
+        Console.WriteLine("1) Adapter demo (payment gateways)");
+        Console.WriteLine("2) Create invoice");
+        Console.WriteLine("3) Create payment");
+        Console.WriteLine("4) Process payment");
+        Console.WriteLine("5) List invoices");
+        Console.WriteLine("6) Builder demo (custom burger)");
+        Console.WriteLine("7) Prototype demo (laptop clone)");
+        Console.WriteLine("8) Singleton demo (DB connection)");
+        Console.WriteLine("9) Exit");
     }
 
     public string? ReadChoice()
@@ -58,6 +60,18 @@ public class MainMenuView
     {
         Console.WriteLine(success ? "Payment OK." : "Payment failed.");
         Console.WriteLine(message);
+    }
+
+    public void ShowAdapterDemo(PaymentRequest request, IReadOnlyCollection<PaymentResponse> responses)
+    {
+        ShowMessage("Adapter demo:");
+        ShowMessage($"Request: {request.Amount:0.00} {request.Currency} | {request.Description}");
+
+        foreach (var response in responses)
+        {
+            ShowMessage(
+                $"{response.Provider} => Success: {response.Success}, TransactionId: {response.TransactionId}");
+        }
     }
 
     public void ShowInvoices(IReadOnlyCollection<Invoice> invoices)

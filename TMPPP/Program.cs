@@ -1,39 +1,46 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using TMPPP.Controllers;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Factories;
 using TMPPP.Domain.Factories.AbstractFactory;
 using TMPPP.Domain.Services;
+using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.ValueObjects;
 using TMPPP.Views;
 
-const string DefaultSqliteConnectionString = "Data Source=payments.db";
+var appRoot = ResolveAppRoot();
+var sqliteConnectionString = $"Data Source={Path.Combine(appRoot, "payments.db")}";
 
 if (args.Any(x => string.Equals(x, "--api", StringComparison.OrdinalIgnoreCase)))
 {
-    RunApi(args);
+    RunApi(args, appRoot, sqliteConnectionString);
     return;
 }
 
-RunConsole();
+RunConsole(appRoot, sqliteConnectionString);
 
-void RunConsole()
+void RunConsole(string rootPath, string defaultConnectionString)
 {
-    using var factory = CreateFactory(DefaultSqliteConnectionString);
+    using var factory = CreateFactory(defaultConnectionString);
 
+    var customerRepository = factory.CreateCustomerRepository();
     var paymentRepository = factory.CreatePaymentRepository();
     var invoiceRepository = factory.CreateInvoiceRepository();
     var notificationService = factory.CreateNotificationService();
     var paymentProcessor = factory.CreatePaymentProcessor(paymentRepository, notificationService);
     var paymentService = factory.CreatePaymentService(paymentRepository, invoiceRepository, paymentProcessor);
+    _ = customerRepository;
 
     var view = new MainMenuView();
+    var adapterController = new AdapterController(view);
     var invoiceController = new InvoiceController(invoiceRepository, view);
     var paymentController = new PaymentController(paymentService, view);
     var burgerController = new BurgerController(view);
     var prototypeController = new PrototypeController(view);
-    var singletonController = new SingletonController(view, DefaultSqliteConnectionString);
+    var singletonController = new SingletonController(view, defaultConnectionString);
     var appController = new AppController(
+        adapterController,
         invoiceController,
         paymentController,
         burgerController,
@@ -44,22 +51,28 @@ void RunConsole()
     appController.Run();
 }
 
-void RunApi(string[] runArgs)
+void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
 {
-    var builder = WebApplication.CreateBuilder(runArgs);
+    var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+    {
+        Args = runArgs,
+        ContentRootPath = rootPath
+    });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
 
-    var factory = CreateFactory(DefaultSqliteConnectionString);
+    var factory = CreateFactory(defaultConnectionString);
     app.Lifetime.ApplicationStopping.Register(factory.Dispose);
 
+    var customerRepository = factory.CreateCustomerRepository();
     var paymentRepository = factory.CreatePaymentRepository();
     var invoiceRepository = factory.CreateInvoiceRepository();
     var notificationService = factory.CreateNotificationService();
     var paymentProcessor = factory.CreatePaymentProcessor(paymentRepository, notificationService);
     var paymentService = factory.CreatePaymentService(paymentRepository, invoiceRepository, paymentProcessor);
+    var useMemoryStorage = Environment.GetEnvironmentVariable("PAYMENT_STORAGE")?.Trim().ToLowerInvariant() == "memory";
 
     app.UseDefaultFiles();
     app.UseStaticFiles();
@@ -81,6 +94,29 @@ void RunApi(string[] runArgs)
 
     app.MapGet("/api/payment-methods", () => Results.Ok(new[] { "card", "bank", "cash" }));
 
+    app.MapGet("/api/patterns/adapter-demo", () =>
+    {
+        var request = new PaymentRequest(249.99m, "RON", "Laborator structural patterns");
+        var gateways = new List<IOnlinePaymentGateway>
+        {
+            new PayPalAdapter(new PayPalGateway()),
+            new StripeAdapter(new StripeGateway()),
+            new GooglePayAdapter(new GooglePayGateway())
+        };
+
+        var responses = gateways
+            .Select(gateway => gateway.Pay(request))
+            .ToList();
+
+        return Results.Ok(new
+        {
+            pattern = "Adapter",
+            request,
+            adapters = responses,
+            explanation = "Aceeasi cerere este trimisa unitar catre gateway-uri cu API-uri diferite."
+        });
+    });
+
     app.MapPost("/api/invoices", ([FromBody] CreateInvoiceRequest request) =>
     {
         if (request.Amount <= 0)
@@ -88,9 +124,28 @@ void RunApi(string[] runArgs)
             return Results.BadRequest(new { error = "Amount must be greater than 0." });
         }
 
-        var customerId = request.CustomerId ?? Guid.NewGuid();
+        Guid customerId;
+        if (string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            customerId = Guid.NewGuid();
+        }
+        else if (!Guid.TryParse(request.CustomerId, out customerId))
+        {
+            return Results.BadRequest(new { error = "CustomerId must be a valid GUID." });
+        }
+
         var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
         var dueDate = request.DueDateUtc ?? DateTime.UtcNow.AddDays(14);
+        var autoName = string.IsNullOrWhiteSpace(request.CustomerName) ? $"Customer {customerId:N}" : request.CustomerName.Trim();
+        var autoEmail = string.IsNullOrWhiteSpace(request.CustomerEmail) ? $"{customerId:N}@autogen.local" : request.CustomerEmail.Trim();
+        if (useMemoryStorage)
+        {
+            customerRepository.EnsureExists(customerId, autoName, autoEmail);
+        }
+        else
+        {
+            EnsureCustomerExistsInSqlite(defaultConnectionString, customerId, autoName, autoEmail);
+        }
 
         var invoice = new Invoice(Guid.NewGuid(), customerId, new Money(request.Amount, currency), dueDate);
         invoiceRepository.Add(invoice);
@@ -155,7 +210,20 @@ void RunApi(string[] runArgs)
 
     app.MapPost("/api/demo/run", () =>
     {
-        var invoice = new Invoice(Guid.NewGuid(), Guid.NewGuid(), new Money(150m, "RON"), DateTime.UtcNow.AddDays(14));
+        var customerId = Guid.NewGuid();
+        if (useMemoryStorage)
+        {
+            customerRepository.EnsureExists(customerId, "Demo Customer", $"{customerId:N}@demo.local");
+        }
+        else
+        {
+            EnsureCustomerExistsInSqlite(
+                defaultConnectionString,
+                customerId,
+                "Demo Customer",
+                $"{customerId:N}@demo.local");
+        }
+        var invoice = new Invoice(Guid.NewGuid(), customerId, new Money(150m, "RON"), DateTime.UtcNow.AddDays(14));
         invoiceRepository.Add(invoice);
 
         var payment = paymentService.CreatePayment(invoice.Id, new Money(150m, "RON"));
@@ -174,12 +242,43 @@ void RunApi(string[] runArgs)
     app.Run();
 }
 
+static void EnsureCustomerExistsInSqlite(string connectionString, Guid customerId, string name, string email)
+{
+    using var connection = new SqliteConnection(connectionString);
+    connection.Open();
+
+    using var command = connection.CreateCommand();
+    command.CommandText =
+        "INSERT OR IGNORE INTO \"Customers\" (\"Id\", \"Name\", \"Email\") VALUES ($id, $name, $email);";
+    command.Parameters.AddWithValue("$id", customerId.ToString().ToUpperInvariant());
+    command.Parameters.AddWithValue("$name", name);
+    command.Parameters.AddWithValue("$email", email);
+    command.ExecuteNonQuery();
+}
+
 static PaymentDomainFactory CreateFactory(string sqliteConnectionString)
 {
     var mode = Environment.GetEnvironmentVariable("PAYMENT_STORAGE")?.Trim().ToLowerInvariant();
     return mode == "memory"
         ? new InMemoryPaymentDomainFactory()
         : new SqlitePaymentDomainFactory(sqliteConnectionString);
+}
+
+static string ResolveAppRoot()
+{
+    var current = Directory.GetCurrentDirectory();
+    if (Directory.Exists(Path.Combine(current, "wwwroot")))
+    {
+        return current;
+    }
+
+    var projectFolder = Path.Combine(current, "TMPPP");
+    if (Directory.Exists(Path.Combine(projectFolder, "wwwroot")))
+    {
+        return projectFolder;
+    }
+
+    return current;
 }
 
 static PaymentMethodCreator ResolveCreator(string? methodChoice)
@@ -209,7 +308,13 @@ static PaymentDto ToPaymentDto(Payment payment)
         payment.Status.ToString());
 }
 
-internal sealed record CreateInvoiceRequest(decimal Amount, string? Currency, Guid? CustomerId, DateTime? DueDateUtc);
+internal sealed record CreateInvoiceRequest(
+    decimal Amount,
+    string? Currency,
+    string? CustomerId,
+    string? CustomerName,
+    string? CustomerEmail,
+    DateTime? DueDateUtc);
 
 internal sealed record CreatePaymentRequest(Guid InvoiceId, decimal Amount, string? Currency);
 
