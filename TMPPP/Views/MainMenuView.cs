@@ -1,6 +1,7 @@
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Prototypes;
 using TMPPP.Domain.Structural.Adapter;
+using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Builders;
 
 namespace TMPPP.Views;
@@ -15,14 +16,15 @@ public class MainMenuView
     public void ShowMainMenu()
     {
         Console.WriteLine("1) Adapter demo (payment gateways)");
-        Console.WriteLine("2) Create invoice");
-        Console.WriteLine("3) Create payment");
-        Console.WriteLine("4) Process payment");
-        Console.WriteLine("5) List invoices");
-        Console.WriteLine("6) Builder demo (custom burger)");
-        Console.WriteLine("7) Prototype demo (laptop clone)");
-        Console.WriteLine("8) Singleton demo (DB connection)");
-        Console.WriteLine("9) Exit");
+        Console.WriteLine("2) Composite demo (payment batches)");
+        Console.WriteLine("3) Create invoice");
+        Console.WriteLine("4) Create payment");
+        Console.WriteLine("5) Process payment");
+        Console.WriteLine("6) List invoices");
+        Console.WriteLine("7) Builder demo (custom burger)");
+        Console.WriteLine("8) Prototype demo (laptop clone)");
+        Console.WriteLine("9) Singleton demo (DB connection)");
+        Console.WriteLine("10) Exit");
     }
 
     public string? ReadChoice()
@@ -72,6 +74,12 @@ public class MainMenuView
             ShowMessage(
                 $"{response.Provider} => Success: {response.Success}, TransactionId: {response.TransactionId}");
         }
+    }
+
+    public void ShowCompositeDemo(IPaymentComponent batch)
+    {
+        ShowMessage("Composite demo:");
+        ShowMessage(batch.Render());
     }
 
     public void ShowInvoices(IReadOnlyCollection<Invoice> invoices)

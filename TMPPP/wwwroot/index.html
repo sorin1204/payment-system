@@ -173,6 +173,61 @@
       font-size: .92rem;
     }
 
+    .mini-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .list-panel {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      padding: 12px;
+    }
+
+    .list-panel h3 {
+      margin: 0 0 8px;
+      font-size: .95rem;
+      color: #1d3e36;
+    }
+
+    .composite-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--ink);
+    }
+
+    .composite-list li + li {
+      margin-top: 6px;
+    }
+
+    .summary-strip {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 12px;
+    }
+
+    .summary-box {
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid var(--border);
+    }
+
+    .summary-box strong {
+      display: block;
+      font-size: 1.1rem;
+      color: #17342e;
+    }
+
+    .summary-box span {
+      font-size: .8rem;
+      color: var(--muted);
+    }
+
     .ok { color: var(--ok); }
     .err { color: var(--err); }
 
@@ -184,6 +239,8 @@
     @media (max-width: 680px) {
       body { padding: 14px; }
       .row { grid-template-columns: 1fr; }
+      .mini-grid { grid-template-columns: 1fr; }
+      .summary-strip { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -201,6 +258,58 @@
       <label>Scenariu</label>
       <div class="note">Unificare pentru PayPal, Stripe si Google Pay prin aceeasi interfata: <strong>IOnlinePaymentGateway</strong>.</div>
       <button id="btnAdapterDemo">Run Adapter Demo</button>
+    </article>
+
+    <article class="card accent-card">
+      <h2>Composite Pattern Demo</h2>
+      <label>Scenariu</label>
+      <div class="note">Platile individuale si batch-urile de plati sunt tratate unitar prin <strong>IPaymentComponent</strong>.</div>
+      <button id="btnCompositeDemo">Run Composite Demo</button>
+
+      <div class="summary-strip">
+        <div class="summary-box">
+          <strong id="compositeGroupCount">0</strong>
+          <span>grupuri in batch</span>
+        </div>
+        <div class="summary-box">
+          <strong id="compositePaymentCount">0</strong>
+          <span>plati individuale</span>
+        </div>
+        <div class="summary-box">
+          <strong id="compositeTotal">0.00 RON</strong>
+          <span>total calculat local</span>
+        </div>
+      </div>
+
+      <label for="compositeBatchName">Batch principal</label>
+      <input id="compositeBatchName" value="Settlement March 2025" />
+
+      <label for="compositeCurrency">Currency</label>
+      <input id="compositeCurrency" value="RON" />
+
+      <div class="mini-grid">
+        <div>
+          <label for="compositeGroupName">Grup</label>
+          <input id="compositeGroupName" value="Card payments" />
+        </div>
+        <div>
+          <label for="compositePaymentName">Payment name</label>
+          <input id="compositePaymentName" value="Order #1005" />
+        </div>
+        <div>
+          <label for="compositePaymentAmount">Amount</label>
+          <input id="compositePaymentAmount" type="number" min="0.01" step="0.01" value="99.90" />
+        </div>
+      </div>
+
+      <button id="btnAddCompositePayment">Add Payment To Group</button>
+      <button id="btnBuildComposite" class="secondary">Build Composite Batch</button>
+      <button id="btnResetComposite">Reset Composite Builder</button>
+
+      <div class="list-panel">
+        <h3>Batch preview</h3>
+        <ul id="compositePreview" class="composite-list"></ul>
+      </div>
     </article>
 
     <article class="card">
@@ -265,6 +374,9 @@
 <script>
   const resultEl = document.getElementById('result');
   const statusEl = document.getElementById('statusLine');
+  const compositeState = {
+    groups: []
+  };
 
   function setStatus(message, isError = false) {
     statusEl.textContent = message;
@@ -274,6 +386,74 @@
   function showResult(label, data) {
     const payload = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     resultEl.value = `[${new Date().toLocaleTimeString()}] ${label}\n${payload}`;
+  }
+
+  function formatMoney(value, currency) {
+    return `${Number(value).toFixed(2)} ${currency}`;
+  }
+
+  function syncCompositeSummary() {
+    const currency = document.getElementById('compositeCurrency').value.trim() || 'RON';
+    const groupCount = compositeState.groups.length;
+    const paymentCount = compositeState.groups.reduce((sum, group) => sum + group.payments.length, 0);
+    const total = compositeState.groups.reduce(
+      (sum, group) => sum + group.payments.reduce((inner, payment) => inner + payment.amount, 0),
+      0
+    );
+
+    document.getElementById('compositeGroupCount').textContent = String(groupCount);
+    document.getElementById('compositePaymentCount').textContent = String(paymentCount);
+    document.getElementById('compositeTotal').textContent = formatMoney(total, currency.toUpperCase());
+  }
+
+  function renderCompositePreview() {
+    const previewEl = document.getElementById('compositePreview');
+    previewEl.innerHTML = '';
+
+    if (compositeState.groups.length === 0) {
+      previewEl.innerHTML = '<li>Nicio plata adaugata in builder.</li>';
+      syncCompositeSummary();
+      return;
+    }
+
+    for (const group of compositeState.groups) {
+      const groupItem = document.createElement('li');
+      const groupTotal = group.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      groupItem.innerHTML = `<strong>${group.groupName}</strong> - ${group.payments.length} plati - ${groupTotal.toFixed(2)}`;
+
+      const nested = document.createElement('ul');
+      nested.className = 'composite-list';
+      for (const payment of group.payments) {
+        const paymentItem = document.createElement('li');
+        paymentItem.textContent = `${payment.name} - ${payment.amount.toFixed(2)}`;
+        nested.appendChild(paymentItem);
+      }
+
+      groupItem.appendChild(nested);
+      previewEl.appendChild(groupItem);
+    }
+
+    syncCompositeSummary();
+  }
+
+  function seedCompositeBuilder() {
+    compositeState.groups = [
+      {
+        groupName: 'Card payments',
+        payments: [
+          { name: 'Order #1001', amount: 120.00 },
+          { name: 'Order #1002', amount: 85.50 }
+        ]
+      },
+      {
+        groupName: 'Wallet payments',
+        payments: [
+          { name: 'Google Pay order #1003', amount: 64.99 },
+          { name: 'PayPal order #1004', amount: 210.00 }
+        ]
+      }
+    ];
+    renderCompositePreview();
   }
 
   async function callApi(path, method = 'GET', body = null) {
@@ -364,6 +544,54 @@
   document.getElementById('btnDemoRun').addEventListener('click', () => callApi('/api/demo/run', 'POST'));
   document.getElementById('btnApiInfo').addEventListener('click', () => callApi('/api/info'));
   document.getElementById('btnAdapterDemo').addEventListener('click', () => callApi('/api/patterns/adapter-demo'));
+  document.getElementById('btnCompositeDemo').addEventListener('click', () => callApi('/api/patterns/composite-demo'));
+  document.getElementById('btnAddCompositePayment').addEventListener('click', () => {
+    const groupName = document.getElementById('compositeGroupName').value.trim();
+    const paymentName = document.getElementById('compositePaymentName').value.trim();
+    const amount = Number(document.getElementById('compositePaymentAmount').value);
+
+    if (!groupName || !paymentName || !Number.isFinite(amount) || amount <= 0) {
+      setStatus('Completeaza grupul, numele platii si suma valida.', true);
+      return;
+    }
+
+    let group = compositeState.groups.find(item => item.groupName.toLowerCase() === groupName.toLowerCase());
+    if (!group) {
+      group = { groupName, payments: [] };
+      compositeState.groups.push(group);
+    }
+
+    group.payments.push({ name: paymentName, amount });
+    renderCompositePreview();
+    setStatus(`Plata adaugata in grupul ${groupName}.`);
+  });
+  document.getElementById('btnBuildComposite').addEventListener('click', async () => {
+    const batchName = document.getElementById('compositeBatchName').value.trim();
+    const currency = document.getElementById('compositeCurrency').value.trim() || 'RON';
+
+    if (!batchName) {
+      setStatus('Batch principal lipsa.', true);
+      return;
+    }
+
+    if (compositeState.groups.length === 0) {
+      setStatus('Adauga cel putin o plata in builder.', true);
+      return;
+    }
+
+    await callApi('/api/patterns/composite-build', 'POST', {
+      batchName,
+      currency,
+      groups: compositeState.groups
+    });
+  });
+  document.getElementById('btnResetComposite').addEventListener('click', () => {
+    compositeState.groups = [];
+    renderCompositePreview();
+    setStatus('Composite builder resetat.');
+  });
+
+  seedCompositeBuilder();
 </script>
 </body>
 </html>

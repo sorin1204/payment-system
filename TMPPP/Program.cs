@@ -6,6 +6,7 @@ using TMPPP.Domain.Factories;
 using TMPPP.Domain.Factories.AbstractFactory;
 using TMPPP.Domain.Services;
 using TMPPP.Domain.Structural.Adapter;
+using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.ValueObjects;
 using TMPPP.Views;
 
@@ -34,6 +35,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
 
     var view = new MainMenuView();
     var adapterController = new AdapterController(view);
+    var compositeController = new CompositeController(view);
     var invoiceController = new InvoiceController(invoiceRepository, view);
     var paymentController = new PaymentController(paymentService, view);
     var burgerController = new BurgerController(view);
@@ -41,6 +43,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var singletonController = new SingletonController(view, defaultConnectionString);
     var appController = new AppController(
         adapterController,
+        compositeController,
         invoiceController,
         paymentController,
         burgerController,
@@ -115,6 +118,53 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
             adapters = responses,
             explanation = "Aceeasi cerere este trimisa unitar catre gateway-uri cu API-uri diferite."
         });
+    });
+
+    app.MapGet("/api/patterns/composite-demo", () =>
+    {
+        var batch = CompositeController.BuildPaymentBatch();
+        return Results.Ok(new
+        {
+            pattern = "Composite",
+            componentType = "Payment batch hierarchy",
+            totalAmount = batch.GetAmount(),
+            structure = ToPaymentComponentDto(batch),
+            rendered = batch.Render(),
+            explanation = "Platile individuale si loturile de plati sunt tratate uniform prin aceeasi interfata."
+        });
+    });
+
+    app.MapPost("/api/patterns/composite-build", ([FromBody] BuildCompositeBatchRequest request) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.BatchName))
+        {
+            return Results.BadRequest(new { error = "BatchName is required." });
+        }
+
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+        var groupRequests = request.Groups?.ToList() ?? [];
+        if (groupRequests.Count == 0)
+        {
+            return Results.BadRequest(new { error = "At least one payment group is required." });
+        }
+
+        try
+        {
+            var batch = BuildCompositeBatch(request.BatchName.Trim(), currency, groupRequests);
+            return Results.Ok(new
+            {
+                pattern = "Composite",
+                source = "custom-builder",
+                totalAmount = batch.GetAmount(),
+                structure = ToPaymentComponentDto(batch),
+                rendered = batch.Render(),
+                explanation = "Batch-ul principal si sub-batch-urile folosesc aceeasi interfata comuna."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
     });
 
     app.MapPost("/api/invoices", ([FromBody] CreateInvoiceRequest request) =>
@@ -308,6 +358,73 @@ static PaymentDto ToPaymentDto(Payment payment)
         payment.Status.ToString());
 }
 
+static object ToPaymentComponentDto(IPaymentComponent component)
+{
+    return component switch
+    {
+        PaymentLeaf item => new
+        {
+            type = "item",
+            item.Name,
+            amount = item.GetAmount(),
+            item.Currency
+        },
+        PaymentBatch category => new
+        {
+            type = "batch",
+            category.Name,
+            amount = category.GetAmount(),
+            category.Currency,
+            children = category.Children.Select(ToPaymentComponentDto).ToList()
+        },
+        _ => new
+        {
+            type = "unknown",
+            component.Name,
+            amount = component.GetAmount()
+        }
+    };
+}
+
+static PaymentBatch BuildCompositeBatch(string batchName, string currency, IReadOnlyCollection<CompositeGroupRequest> groups)
+{
+    var root = new PaymentBatch(batchName, currency);
+
+    foreach (var group in groups)
+    {
+        if (string.IsNullOrWhiteSpace(group.GroupName))
+        {
+            throw new ArgumentException("Each group must have a name.");
+        }
+
+        var payments = group.Payments?.ToList() ?? [];
+        if (payments.Count == 0)
+        {
+            throw new ArgumentException($"Group '{group.GroupName}' must contain at least one payment.");
+        }
+
+        var groupBatch = new PaymentBatch(group.GroupName.Trim(), currency);
+        foreach (var payment in payments)
+        {
+            if (string.IsNullOrWhiteSpace(payment.Name))
+            {
+                throw new ArgumentException($"A payment in group '{group.GroupName}' is missing a name.");
+            }
+
+            if (payment.Amount <= 0)
+            {
+                throw new ArgumentException($"Payment '{payment.Name}' must have an amount greater than 0.");
+            }
+
+            groupBatch.Add(new PaymentLeaf(payment.Name.Trim(), payment.Amount, currency));
+        }
+
+        root.Add(groupBatch);
+    }
+
+    return root;
+}
+
 internal sealed record CreateInvoiceRequest(
     decimal Amount,
     string? Currency,
@@ -319,6 +436,12 @@ internal sealed record CreateInvoiceRequest(
 internal sealed record CreatePaymentRequest(Guid InvoiceId, decimal Amount, string? Currency);
 
 internal sealed record ProcessPaymentRequest(string Method);
+
+internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
+
+internal sealed record CompositeGroupRequest(string GroupName, List<CompositePaymentRequest>? Payments);
+
+internal sealed record CompositePaymentRequest(string Name, decimal Amount);
 
 internal sealed record InvoiceDto(Guid Id, Guid CustomerId, decimal TotalAmount, string Currency, DateTime DueDateUtc);
 
