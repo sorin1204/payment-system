@@ -12,6 +12,7 @@ public class AppController
     private readonly BurgerController _burgerController;
     private readonly PrototypeController _prototypeController;
     private readonly SingletonController _singletonController;
+    private readonly FlyweightController _flyweightController;
     private readonly MainMenuView _view;
 
     public AppController(
@@ -23,6 +24,7 @@ public class AppController
         BurgerController burgerController,
         PrototypeController prototypeController,
         SingletonController singletonController,
+        FlyweightController flyweightController,
         MainMenuView view)
     {
         _adapterController = adapterController;
@@ -33,6 +35,7 @@ public class AppController
         _burgerController = burgerController;
         _prototypeController = prototypeController;
         _singletonController = singletonController;
+        _flyweightController = flyweightController;
         _view = view;
     }
 
@@ -78,6 +81,9 @@ public class AppController
                     _singletonController.RunSingletonDemo();
                     break;
                 case "11":
+                    _flyweightController.RunPaymentFlyweightDemo();
+                    break;
+                case "12":
                     running = false;
                     break;
                 default:

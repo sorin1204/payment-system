@@ -3,6 +3,7 @@ using TMPPP.Domain.Prototypes;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Structural.Facade;
+using TMPPP.Domain.Structural.Flyweight;
 using TMPPP.Domain.Builders;
 
 namespace TMPPP.Views;
@@ -26,7 +27,8 @@ public class MainMenuView
         Console.WriteLine("8) Builder demo (custom burger)");
         Console.WriteLine("9) Prototype demo (laptop clone)");
         Console.WriteLine("10) Singleton demo (DB connection)");
-        Console.WriteLine("11) Exit");
+        Console.WriteLine("11) Flyweight demo (payment document profiles)");
+        Console.WriteLine("12) Exit");
     }
 
     public string? ReadChoice()
@@ -132,6 +134,22 @@ public class MainMenuView
         ShowMessage($"Shallow clone (after edits): {FormatLaptop(shallowCopy)}");
         ShowMessage($"Deep clone (after edits): {FormatLaptop(deepCopy)}");
         ShowMessage("Observation: original changed after shallow clone edits, but not after deep clone edits.");
+    }
+
+    public void ShowFlyweightDemo(FlyweightDemoResult result)
+    {
+        ShowMessage("Flyweight demo:");
+        ShowMessage($"Total payment entries: {result.TotalEntries}");
+        ShowMessage($"Unique shared profiles: {result.UniqueFlyweights}");
+        ShowMessage($"Avoided duplicate profile objects: {result.SavedObjects}");
+        ShowMessage($"Shared instance reused for repeated card payments: {result.CardProfileShared}");
+        ShowMessage(result.Explanation);
+        ShowMessage("Sample entries:");
+
+        foreach (var entry in result.Entries.Take(3))
+        {
+            ShowMessage(entry.Render());
+        }
     }
 
     private static string FormatLaptop(CustomLaptop laptop)

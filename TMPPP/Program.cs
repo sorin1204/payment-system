@@ -8,6 +8,7 @@ using TMPPP.Domain.Services;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Structural.Facade;
+using TMPPP.Domain.Structural.Flyweight;
 using TMPPP.Domain.ValueObjects;
 using TMPPP.Views;
 
@@ -44,6 +45,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var burgerController = new BurgerController(view);
     var prototypeController = new PrototypeController(view);
     var singletonController = new SingletonController(view, defaultConnectionString);
+    var flyweightController = new FlyweightController(view);
     var appController = new AppController(
         adapterController,
         compositeController,
@@ -53,6 +55,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
         burgerController,
         prototypeController,
         singletonController,
+        flyweightController,
         view);
 
     appController.Run();
@@ -207,6 +210,37 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
         {
             return Results.BadRequest(new { error = ex.Message });
         }
+    });
+
+    app.MapGet("/api/patterns/flyweight-demo", () =>
+    {
+        var result = FlyweightController.BuildPaymentFlyweightDemo();
+        return Results.Ok(new
+        {
+            pattern = "Flyweight",
+            domain = "Payment document rendering",
+            totalEntries = result.TotalEntries,
+            uniqueSharedProfiles = result.UniqueFlyweights,
+            avoidedDuplicateObjects = result.SavedObjects,
+            sharedInstanceReused = result.CardProfileShared,
+            sampleEntries = result.Entries.Take(5).Select(entry => new
+            {
+                entry.PaymentReference,
+                entry.CustomerName,
+                entry.Amount,
+                entry.CreatedAtUtc,
+                profile = new
+                {
+                    entry.Profile.PaymentMethod,
+                    entry.Profile.Currency,
+                    entry.Profile.Status,
+                    entry.Profile.ProcessingChannel,
+                    entry.Profile.ReceiptFooter,
+                    profileHash = entry.Profile.GetHashCode()
+                }
+            }),
+            explanation = result.Explanation
+        });
     });
 
     app.MapPost("/api/invoices", ([FromBody] CreateInvoiceRequest request) =>
