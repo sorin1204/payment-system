@@ -11,6 +11,7 @@ using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Structural.Decorator;
 using TMPPP.Domain.Structural.Facade;
 using TMPPP.Domain.Structural.Flyweight;
+using TMPPP.Domain.Structural.Proxy;
 using TMPPP.Domain.ValueObjects;
 using TMPPP.Views;
 
@@ -50,6 +51,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var flyweightController = new FlyweightController(view);
     var decoratorController = new DecoratorController(view);
     var bridgeController = new BridgeController(view);
+    var proxyController = new ProxyController(view);
     var appController = new AppController(
         adapterController,
         compositeController,
@@ -62,6 +64,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
         flyweightController,
         decoratorController,
         bridgeController,
+        proxyController,
         view);
 
     appController.Run();
@@ -281,6 +284,40 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
                 item.Renderer,
                 item.Output
             }),
+            explanation = result.Explanation
+        });
+    });
+
+    app.MapGet("/api/patterns/proxy-demo", () =>
+    {
+        var result = ProxyController.BuildProxyDemo();
+        return Results.Ok(new
+        {
+            pattern = "Proxy",
+            domain = "Secured financial audit access",
+            deniedAttempt = new
+            {
+                result.DeniedAttempt.RequestedBy,
+                result.DeniedAttempt.Role,
+                result.DeniedAttempt.AccessGranted,
+                result.DeniedAttempt.RealServiceInitialized,
+                result.DeniedAttempt.Message
+            },
+            grantedAttempt = new
+            {
+                result.GrantedAttempt.RequestedBy,
+                result.GrantedAttempt.Role,
+                result.GrantedAttempt.AccessGranted,
+                result.GrantedAttempt.RealServiceInitialized,
+                entries = result.GrantedAttempt.Entries.Select(entry => new
+                {
+                    entry.Label,
+                    entry.Amount,
+                    entry.Currency,
+                    entry.Status
+                }),
+                result.GrantedAttempt.Message
+            },
             explanation = result.Explanation
         });
     });

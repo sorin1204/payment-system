@@ -15,6 +15,7 @@ public class AppController
     private readonly FlyweightController _flyweightController;
     private readonly DecoratorController _decoratorController;
     private readonly BridgeController _bridgeController;
+    private readonly ProxyController _proxyController;
     private readonly MainMenuView _view;
 
     public AppController(
@@ -29,6 +30,7 @@ public class AppController
         FlyweightController flyweightController,
         DecoratorController decoratorController,
         BridgeController bridgeController,
+        ProxyController proxyController,
         MainMenuView view)
     {
         _adapterController = adapterController;
@@ -42,6 +44,7 @@ public class AppController
         _flyweightController = flyweightController;
         _decoratorController = decoratorController;
         _bridgeController = bridgeController;
+        _proxyController = proxyController;
         _view = view;
     }
 
@@ -96,6 +99,9 @@ public class AppController
                     _bridgeController.RunBridgeDemo();
                     break;
                 case "14":
+                    _proxyController.RunProxyDemo();
+                    break;
+                case "15":
                     running = false;
                     break;
                 default:

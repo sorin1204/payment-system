@@ -6,6 +6,7 @@ using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Structural.Decorator;
 using TMPPP.Domain.Structural.Facade;
 using TMPPP.Domain.Structural.Flyweight;
+using TMPPP.Domain.Structural.Proxy;
 using TMPPP.Domain.Builders;
 
 namespace TMPPP.Views;
@@ -32,7 +33,8 @@ public class MainMenuView
         Console.WriteLine("11) Flyweight demo (payment document profiles)");
         Console.WriteLine("12) Decorator demo (notification channels)");
         Console.WriteLine("13) Bridge demo (financial documents x renderers)");
-        Console.WriteLine("14) Exit");
+        Console.WriteLine("14) Proxy demo (secured audit access)");
+        Console.WriteLine("15) Exit");
     }
 
     public string? ReadChoice()
@@ -179,6 +181,22 @@ public class MainMenuView
         {
             ShowMessage($"{item.DocumentType} via {item.Renderer}:");
             ShowMessage(item.Output);
+        }
+    }
+
+    public void ShowProxyDemo(ProxyDemoResult result)
+    {
+        ShowMessage("Proxy demo:");
+        ShowMessage(result.Explanation);
+        ShowMessage(
+            $"Denied access: user={result.DeniedAttempt.RequestedBy}, role={result.DeniedAttempt.Role}, granted={result.DeniedAttempt.AccessGranted}, realLoaded={result.DeniedAttempt.RealServiceInitialized}");
+        ShowMessage(result.DeniedAttempt.Message);
+        ShowMessage(
+            $"Granted access: user={result.GrantedAttempt.RequestedBy}, role={result.GrantedAttempt.Role}, granted={result.GrantedAttempt.AccessGranted}, realLoaded={result.GrantedAttempt.RealServiceInitialized}");
+
+        foreach (var entry in result.GrantedAttempt.Entries)
+        {
+            ShowMessage($"{entry.Label} => {entry.Amount:0.00} {entry.Currency} [{entry.Status}]");
         }
     }
 
