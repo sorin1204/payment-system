@@ -6,6 +6,7 @@ using TMPPP.Domain.Factories;
 using TMPPP.Domain.Factories.AbstractFactory;
 using TMPPP.Domain.Services;
 using TMPPP.Domain.Structural.Adapter;
+using TMPPP.Domain.Structural.Bridge;
 using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Structural.Decorator;
 using TMPPP.Domain.Structural.Facade;
@@ -48,6 +49,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var singletonController = new SingletonController(view, defaultConnectionString);
     var flyweightController = new FlyweightController(view);
     var decoratorController = new DecoratorController(view);
+    var bridgeController = new BridgeController(view);
     var appController = new AppController(
         adapterController,
         compositeController,
@@ -59,6 +61,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
         singletonController,
         flyweightController,
         decoratorController,
+        bridgeController,
         view);
 
     appController.Run();
@@ -260,6 +263,23 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
             {
                 channel.Name,
                 channel.Details
+            }),
+            explanation = result.Explanation
+        });
+    });
+
+    app.MapGet("/api/patterns/bridge-demo", () =>
+    {
+        var result = BridgeController.BuildBridgeDemo();
+        return Results.Ok(new
+        {
+            pattern = "Bridge",
+            domain = "Financial document rendering",
+            combinations = result.Items.Select(item => new
+            {
+                item.DocumentType,
+                item.Renderer,
+                item.Output
             }),
             explanation = result.Explanation
         });

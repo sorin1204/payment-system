@@ -1,6 +1,7 @@
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Prototypes;
 using TMPPP.Domain.Structural.Adapter;
+using TMPPP.Domain.Structural.Bridge;
 using TMPPP.Domain.Structural.Composite;
 using TMPPP.Domain.Structural.Decorator;
 using TMPPP.Domain.Structural.Facade;
@@ -30,7 +31,8 @@ public class MainMenuView
         Console.WriteLine("10) Singleton demo (DB connection)");
         Console.WriteLine("11) Flyweight demo (payment document profiles)");
         Console.WriteLine("12) Decorator demo (notification channels)");
-        Console.WriteLine("13) Exit");
+        Console.WriteLine("13) Bridge demo (financial documents x renderers)");
+        Console.WriteLine("14) Exit");
     }
 
     public string? ReadChoice()
@@ -165,6 +167,18 @@ public class MainMenuView
         foreach (var channel in result.DeliveredChannels)
         {
             ShowMessage($"{channel.Name} => {channel.Details}");
+        }
+    }
+
+    public void ShowBridgeDemo(BridgeDemoResult result)
+    {
+        ShowMessage("Bridge demo:");
+        ShowMessage(result.Explanation);
+
+        foreach (var item in result.Items)
+        {
+            ShowMessage($"{item.DocumentType} via {item.Renderer}:");
+            ShowMessage(item.Output);
         }
     }
 

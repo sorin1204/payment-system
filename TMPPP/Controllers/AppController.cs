@@ -14,6 +14,7 @@ public class AppController
     private readonly SingletonController _singletonController;
     private readonly FlyweightController _flyweightController;
     private readonly DecoratorController _decoratorController;
+    private readonly BridgeController _bridgeController;
     private readonly MainMenuView _view;
 
     public AppController(
@@ -27,6 +28,7 @@ public class AppController
         SingletonController singletonController,
         FlyweightController flyweightController,
         DecoratorController decoratorController,
+        BridgeController bridgeController,
         MainMenuView view)
     {
         _adapterController = adapterController;
@@ -39,6 +41,7 @@ public class AppController
         _singletonController = singletonController;
         _flyweightController = flyweightController;
         _decoratorController = decoratorController;
+        _bridgeController = bridgeController;
         _view = view;
     }
 
@@ -90,6 +93,9 @@ public class AppController
                     _decoratorController.RunNotificationDecoratorDemo();
                     break;
                 case "13":
+                    _bridgeController.RunBridgeDemo();
+                    break;
+                case "14":
                     running = false;
                     break;
                 default:
