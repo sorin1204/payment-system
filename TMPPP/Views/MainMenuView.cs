@@ -2,6 +2,7 @@ using TMPPP.Domain.Entities;
 using TMPPP.Domain.Prototypes;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Composite;
+using TMPPP.Domain.Structural.Decorator;
 using TMPPP.Domain.Structural.Facade;
 using TMPPP.Domain.Structural.Flyweight;
 using TMPPP.Domain.Builders;
@@ -28,7 +29,8 @@ public class MainMenuView
         Console.WriteLine("9) Prototype demo (laptop clone)");
         Console.WriteLine("10) Singleton demo (DB connection)");
         Console.WriteLine("11) Flyweight demo (payment document profiles)");
-        Console.WriteLine("12) Exit");
+        Console.WriteLine("12) Decorator demo (notification channels)");
+        Console.WriteLine("13) Exit");
     }
 
     public string? ReadChoice()
@@ -149,6 +151,20 @@ public class MainMenuView
         foreach (var entry in result.Entries.Take(3))
         {
             ShowMessage(entry.Render());
+        }
+    }
+
+    public void ShowDecoratorDemo(DecoratorDemoResult result)
+    {
+        ShowMessage("Decorator demo:");
+        ShowMessage($"Base notification recipient: {result.Recipient}");
+        ShowMessage($"Subject: {result.Subject}");
+        ShowMessage(result.Explanation);
+        ShowMessage("Delivered through:");
+
+        foreach (var channel in result.DeliveredChannels)
+        {
+            ShowMessage($"{channel.Name} => {channel.Details}");
         }
     }
 

@@ -13,6 +13,7 @@ public class AppController
     private readonly PrototypeController _prototypeController;
     private readonly SingletonController _singletonController;
     private readonly FlyweightController _flyweightController;
+    private readonly DecoratorController _decoratorController;
     private readonly MainMenuView _view;
 
     public AppController(
@@ -25,6 +26,7 @@ public class AppController
         PrototypeController prototypeController,
         SingletonController singletonController,
         FlyweightController flyweightController,
+        DecoratorController decoratorController,
         MainMenuView view)
     {
         _adapterController = adapterController;
@@ -36,6 +38,7 @@ public class AppController
         _prototypeController = prototypeController;
         _singletonController = singletonController;
         _flyweightController = flyweightController;
+        _decoratorController = decoratorController;
         _view = view;
     }
 
@@ -84,6 +87,9 @@ public class AppController
                     _flyweightController.RunPaymentFlyweightDemo();
                     break;
                 case "12":
+                    _decoratorController.RunNotificationDecoratorDemo();
+                    break;
+                case "13":
                     running = false;
                     break;
                 default:

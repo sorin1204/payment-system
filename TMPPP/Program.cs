@@ -7,6 +7,7 @@ using TMPPP.Domain.Factories.AbstractFactory;
 using TMPPP.Domain.Services;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Composite;
+using TMPPP.Domain.Structural.Decorator;
 using TMPPP.Domain.Structural.Facade;
 using TMPPP.Domain.Structural.Flyweight;
 using TMPPP.Domain.ValueObjects;
@@ -46,6 +47,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
     var prototypeController = new PrototypeController(view);
     var singletonController = new SingletonController(view, defaultConnectionString);
     var flyweightController = new FlyweightController(view);
+    var decoratorController = new DecoratorController(view);
     var appController = new AppController(
         adapterController,
         compositeController,
@@ -56,6 +58,7 @@ void RunConsole(string rootPath, string defaultConnectionString)
         prototypeController,
         singletonController,
         flyweightController,
+        decoratorController,
         view);
 
     appController.Run();
@@ -238,6 +241,25 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
                     entry.Profile.ReceiptFooter,
                     profileHash = entry.Profile.GetHashCode()
                 }
+            }),
+            explanation = result.Explanation
+        });
+    });
+
+    app.MapGet("/api/patterns/decorator-demo", () =>
+    {
+        var result = DecoratorController.BuildNotificationDecoratorDemo();
+        return Results.Ok(new
+        {
+            pattern = "Decorator",
+            domain = "Notification delivery",
+            result.Recipient,
+            result.Subject,
+            result.Message,
+            channels = result.DeliveredChannels.Select(channel => new
+            {
+                channel.Name,
+                channel.Details
             }),
             explanation = result.Explanation
         });
