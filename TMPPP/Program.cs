@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using TMPPP.Controllers;
+using TMPPP.Domain.Behavioral.Observer;
 using TMPPP.Domain.Entities;
+using TMPPP.Domain.Enums;
 using TMPPP.Domain.Factories;
 using TMPPP.Domain.Factories.AbstractFactory;
 using TMPPP.Domain.Interfaces;
@@ -146,6 +148,46 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
                 comparison,
                 explanation =
                     "PaymentProcessor si PaymentService lucreaza cu interfata IPaymentMethod, iar strategia concreta poate fi schimbata dinamic intre card, transfer bancar si cash fara modificarea logicii existente."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    });
+
+    app.MapPost("/api/patterns/observer-demo", ([FromBody] ObserverDemoRequest request) =>
+    {
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+
+        if (request.Amount <= 0)
+        {
+            return Results.BadRequest(new { error = "Amount must be greater than 0." });
+        }
+
+        try
+        {
+            var result = ObserverController.BuildPaymentObserverDemo(
+                ResolvePaymentStatus(request.Status),
+                request.Amount,
+                currency);
+
+            return Results.Ok(new
+            {
+                pattern = "Observer",
+                category = "Behavioral",
+                subject = result.SubjectName,
+                paymentReference = result.PaymentReference,
+                previousStatus = result.PreviousStatus.ToString(),
+                currentStatus = result.CurrentStatus.ToString(),
+                observers = result.Observers,
+                notifications = result.Notifications.Select(entry => new
+                {
+                    entry.Observer,
+                    entry.Destination,
+                    entry.Message
+                }),
+                explanation = result.Explanation
             });
         }
         catch (ArgumentException ex)
@@ -571,6 +613,17 @@ static object ExecuteStrategyDemo(string methodChoice, decimal amount, string cu
     };
 }
 
+static PaymentStatus ResolvePaymentStatus(string? status)
+{
+    return status?.Trim().ToLowerInvariant() switch
+    {
+        "processed" => PaymentStatus.Processed,
+        "failed" => PaymentStatus.Failed,
+        "refunded" => PaymentStatus.Refunded,
+        _ => throw new ArgumentException("Status must be one of: processed, failed, refunded.")
+    };
+}
+
 static InvoiceDto ToInvoiceDto(Invoice invoice)
 {
     return new InvoiceDto(invoice.Id, invoice.CustomerId, invoice.Total.Amount, invoice.Total.Currency, invoice.DueDate);
@@ -667,6 +720,8 @@ internal sealed record CreatePaymentRequest(Guid InvoiceId, decimal Amount, stri
 internal sealed record ProcessPaymentRequest(string Method);
 
 internal sealed record StrategyDemoRequest(string Method, decimal Amount, string? Currency);
+
+internal sealed record ObserverDemoRequest(string Status, decimal Amount, string? Currency);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
