@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using TMPPP.Controllers;
+using TMPPP.Domain.Behavioral.Command;
 using TMPPP.Domain.Behavioral.Observer;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Enums;
@@ -191,6 +192,62 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
             });
         }
         catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    });
+
+    app.MapPost("/api/patterns/command-demo", ([FromBody] CommandDemoRequest request) =>
+    {
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+        var operations = request.Operations?.Where(x => !string.IsNullOrWhiteSpace(x)).ToList()
+            ?? ["authorize", "capture", "refund"];
+
+        if (request.Amount <= 0)
+        {
+            return Results.BadRequest(new { error = "Amount must be greater than 0." });
+        }
+
+        try
+        {
+            var result = CommandController.BuildPaymentCommandDemo(
+                operations,
+                Math.Max(0, request.UndoSteps),
+                Math.Max(0, request.RedoSteps),
+                request.Amount,
+                currency);
+
+            return Results.Ok(new
+            {
+                pattern = "Command",
+                category = "Behavioral",
+                paymentReference = result.PaymentReference,
+                amount = result.Amount,
+                result.Currency,
+                queuedCommands = result.QueuedCommands,
+                executionLog = result.ExecutionLog.Select(entry => new
+                {
+                    entry.Action,
+                    entry.CommandName,
+                    entry.StatusAfterAction,
+                    entry.Detail
+                }),
+                finalState = new
+                {
+                    result.FinalState.Authorized,
+                    result.FinalState.Captured,
+                    result.FinalState.Refunded,
+                    result.FinalState.Status,
+                    auditTrail = result.FinalState.AuditTrail
+                },
+                explanation = result.Explanation
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
         }
@@ -722,6 +779,8 @@ internal sealed record ProcessPaymentRequest(string Method);
 internal sealed record StrategyDemoRequest(string Method, decimal Amount, string? Currency);
 
 internal sealed record ObserverDemoRequest(string Status, decimal Amount, string? Currency);
+
+internal sealed record CommandDemoRequest(List<string>? Operations, int UndoSteps, int RedoSteps, decimal Amount, string? Currency);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
