@@ -254,7 +254,49 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
         }
     });
 
-    app.MapGet("/api/patterns/adapter-demo", () =>
+    patternsApi.MapPost("/memento-demo", ([FromBody] MementoDemoRequest request) =>
+    {
+        if (request.InitialAmount <= 0 || request.ReviewAmount <= 0)
+        {
+            return Results.BadRequest(new { error = "InitialAmount and ReviewAmount must be greater than 0." });
+        }
+
+        var initialCurrency = string.IsNullOrWhiteSpace(request.InitialCurrency) ? "RON" : request.InitialCurrency.Trim().ToUpperInvariant();
+        var finalCurrency = string.IsNullOrWhiteSpace(request.FinalCurrency) ? initialCurrency : request.FinalCurrency.Trim().ToUpperInvariant();
+
+        try
+        {
+            var result = MementoController.BuildPaymentDraftMementoDemo(new MementoDemoRequestModel(
+                request.InitialAmount,
+                initialCurrency,
+                string.IsNullOrWhiteSpace(request.InitialMethod) ? "card" : request.InitialMethod.Trim().ToLowerInvariant(),
+                string.IsNullOrWhiteSpace(request.InitialDescription) ? "Initial payment draft" : request.InitialDescription.Trim(),
+                request.ReviewAmount,
+                string.IsNullOrWhiteSpace(request.ReviewDescription) ? "Reviewed by finance team" : request.ReviewDescription.Trim(),
+                string.IsNullOrWhiteSpace(request.FinalMethod) ? "bank" : request.FinalMethod.Trim().ToLowerInvariant(),
+                finalCurrency,
+                string.IsNullOrWhiteSpace(request.FinalDescription) ? "Ready for approval" : request.FinalDescription.Trim(),
+                string.IsNullOrWhiteSpace(request.RestoreVersion) ? "review" : request.RestoreVersion.Trim().ToLowerInvariant()));
+
+            return Results.Ok(new
+            {
+                pattern = "Memento",
+                category = "Behavioral",
+                restoredVersion = result.RestoredVersion,
+                currentDraft = result.CurrentDraft,
+                savedVersions = result.SavedVersions,
+                explanation = result.Explanation
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+        .WithSummary("Ruleaza demo-ul Memento pentru versiuni de draft ale unei plati")
+        .WithDescription("Demonstreaza salvarea si restaurarea versiunilor unui draft de plata fara a expune detaliile interne ale obiectului.");
+
+    patternsApi.MapGet("/adapter-demo", () =>
     {
         var request = new PaymentRequest(249.99m, "RON", "Laborator structural patterns");
         var gateways = new List<IOnlinePaymentGateway>
