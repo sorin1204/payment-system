@@ -4,6 +4,7 @@ using TMPPP.Controllers;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Factories;
 using TMPPP.Domain.Factories.AbstractFactory;
+using TMPPP.Domain.Interfaces;
 using TMPPP.Domain.Services;
 using TMPPP.Domain.Structural.Adapter;
 using TMPPP.Domain.Structural.Bridge;
@@ -113,6 +114,45 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
     }));
 
     app.MapGet("/api/payment-methods", () => Results.Ok(new[] { "card", "bank", "cash" }));
+
+    app.MapPost("/api/patterns/strategy-demo", ([FromBody] StrategyDemoRequest request) =>
+    {
+        var methodKey = string.IsNullOrWhiteSpace(request.Method) ? "card" : request.Method.Trim().ToLowerInvariant();
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+
+        try
+        {
+            var selected = ExecuteStrategyDemo(methodKey, request.Amount, currency);
+            var comparison = new[]
+            {
+                ExecuteStrategyDemo("card", request.Amount, currency),
+                ExecuteStrategyDemo("bank", request.Amount, currency),
+                ExecuteStrategyDemo("cash", request.Amount, currency)
+            };
+
+            return Results.Ok(new
+            {
+                pattern = "Strategy",
+                category = "Behavioral",
+                context = "Payment processing",
+                request = new
+                {
+                    method = methodKey,
+                    amount = request.Amount,
+                    currency
+                },
+                strategyContract = nameof(IPaymentMethod),
+                selectedStrategy = selected,
+                comparison,
+                explanation =
+                    "PaymentProcessor si PaymentService lucreaza cu interfata IPaymentMethod, iar strategia concreta poate fi schimbata dinamic intre card, transfer bancar si cash fara modificarea logicii existente."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    });
 
     app.MapGet("/api/patterns/adapter-demo", () =>
     {
@@ -497,6 +537,40 @@ static PaymentMethodCreator ResolveCreator(string? methodChoice)
     };
 }
 
+static object ExecuteStrategyDemo(string methodChoice, decimal amount, string currency)
+{
+    var creator = ResolveCreator(methodChoice);
+    var method = creator.CreatePaymentMethod();
+    var payment = new Payment(Guid.NewGuid(), Guid.NewGuid(), new Money(amount, currency), DateTime.UtcNow);
+    var supportsAmount = method.Supports(payment.Amount);
+    var result = method.Process(payment);
+
+    if (result.Success)
+    {
+        payment.MarkProcessed();
+    }
+    else
+    {
+        payment.MarkFailed();
+    }
+
+    return new
+    {
+        key = methodChoice,
+        strategy = method.GetType().Name,
+        methodName = method.MethodName,
+        amount,
+        currency,
+        supportsAmount,
+        result = new
+        {
+            result.Success,
+            result.Message
+        },
+        paymentStatusAfterExecution = payment.Status.ToString()
+    };
+}
+
 static InvoiceDto ToInvoiceDto(Invoice invoice)
 {
     return new InvoiceDto(invoice.Id, invoice.CustomerId, invoice.Total.Amount, invoice.Total.Currency, invoice.DueDate);
@@ -591,6 +665,8 @@ internal sealed record CreateInvoiceRequest(
 internal sealed record CreatePaymentRequest(Guid InvoiceId, decimal Amount, string? Currency);
 
 internal sealed record ProcessPaymentRequest(string Method);
+
+internal sealed record StrategyDemoRequest(string Method, decimal Amount, string? Currency);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
