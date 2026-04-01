@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using TMPPP.Controllers;
 using TMPPP.Domain.Behavioral.Command;
+using TMPPP.Domain.Behavioral.Iterator;
 using TMPPP.Domain.Behavioral.Memento;
 using TMPPP.Domain.Behavioral.Observer;
 using TMPPP.Domain.Entities;
@@ -295,6 +296,40 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
     })
         .WithSummary("Ruleaza demo-ul Memento pentru versiuni de draft ale unei plati")
         .WithDescription("Demonstreaza salvarea si restaurarea versiunilor unui draft de plata fara a expune detaliile interne ale obiectului.");
+
+    patternsApi.MapPost("/iterator-demo", ([FromBody] IteratorDemoRequest request) =>
+    {
+        try
+        {
+            var result = IteratorController.BuildPaymentIteratorDemo(request.TakeCount);
+
+            return Results.Ok(new
+            {
+                pattern = "Iterator",
+                category = "Behavioral",
+                totalPayments = result.TotalPayments,
+                firstPayment = result.FirstPayment,
+                currentPayment = result.CurrentPayment,
+                traversal = result.Traversal.Select(step => new
+                {
+                    step.Position,
+                    step.Item.Reference,
+                    step.Item.CustomerName,
+                    step.Item.Amount,
+                    step.Item.Currency,
+                    step.Item.Method,
+                    step.Item.Status
+                }),
+                explanation = result.Explanation
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+        .WithSummary("Ruleaza demo-ul Iterator pentru parcurgerea unui lot de plati")
+        .WithDescription("Demonstreaza parcurgerea secventiala a unei colectii de plati printr-un iterator dedicat, fara a expune structura interna a colectiei.");
 
     patternsApi.MapGet("/adapter-demo", () =>
     {
@@ -836,6 +871,8 @@ internal sealed record MementoDemoRequest(
     string? FinalCurrency,
     string? FinalDescription,
     string? RestoreVersion);
+
+internal sealed record IteratorDemoRequest(int TakeCount);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
