@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using TMPPP.Controllers;
 using TMPPP.Domain.Behavioral.Command;
+using TMPPP.Domain.Behavioral.Memento;
 using TMPPP.Domain.Behavioral.Observer;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Enums;
@@ -781,6 +782,18 @@ internal sealed record StrategyDemoRequest(string Method, decimal Amount, string
 internal sealed record ObserverDemoRequest(string Status, decimal Amount, string? Currency);
 
 internal sealed record CommandDemoRequest(List<string>? Operations, int UndoSteps, int RedoSteps, decimal Amount, string? Currency);
+
+internal sealed record MementoDemoRequest(
+    decimal InitialAmount,
+    string? InitialCurrency,
+    string? InitialMethod,
+    string? InitialDescription,
+    decimal ReviewAmount,
+    string? ReviewDescription,
+    string? FinalMethod,
+    string? FinalCurrency,
+    string? FinalDescription,
+    string? RestoreVersion);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
