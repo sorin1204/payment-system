@@ -1,3 +1,5 @@
+using TMPPP.Domain.Behavioral.Visitor;
+
 namespace TMPPP.Domain.Structural.Composite;
 
 public class PaymentBatch : IPaymentComponent
@@ -31,5 +33,15 @@ public class PaymentBatch : IPaymentComponent
         var lines = new List<string> { $"{indent}+ {Name}: total {GetAmount():0.00} {Currency}" };
         lines.AddRange(_children.Select(child => child.Render(depth + 1)));
         return string.Join(Environment.NewLine, lines);
+    }
+
+    public void Accept(IPaymentComponentVisitor visitor, int depth = 0)
+    {
+        visitor.VisitBatch(this, depth);
+
+        foreach (var child in _children)
+        {
+            child.Accept(visitor, depth + 1);
+        }
     }
 }

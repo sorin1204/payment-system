@@ -1,3 +1,5 @@
+using TMPPP.Domain.Behavioral.Visitor;
+
 namespace TMPPP.Domain.Structural.Composite;
 
 public class PaymentLeaf : IPaymentComponent
@@ -22,5 +24,10 @@ public class PaymentLeaf : IPaymentComponent
     {
         var indent = new string(' ', depth * 2);
         return $"{indent}- {Name}: {Amount:0.00} {Currency}";
+    }
+
+    public void Accept(IPaymentComponentVisitor visitor, int depth = 0)
+    {
+        visitor.VisitLeaf(this, depth);
     }
 }

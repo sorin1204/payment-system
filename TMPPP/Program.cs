@@ -8,6 +8,7 @@ using TMPPP.Domain.Behavioral.Mediator;
 using TMPPP.Domain.Behavioral.Memento;
 using TMPPP.Domain.Behavioral.Observer;
 using TMPPP.Domain.Behavioral.TemplateMethod;
+using TMPPP.Domain.Behavioral.Visitor;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Enums;
 using TMPPP.Domain.Factories;
@@ -506,6 +507,35 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
     })
         .WithSummary("Ruleaza demo-ul Template Method pentru metodele de plata")
         .WithDescription("Arata un algoritm comun de procesare a unei plati, in care clasa de baza fixeaza ordinea pasilor, iar card, bank si cash personalizeaza executia concreta.");
+
+    patternsApi.MapGet("/visitor-demo", () =>
+    {
+        var result = VisitorController.BuildPaymentVisitorDemo();
+
+        return Results.Ok(new
+        {
+            pattern = "Visitor",
+            category = "Behavioral",
+            rootBatch = result.RootBatch,
+            metrics = new
+            {
+                result.Metrics.BatchCount,
+                result.Metrics.LeafCount,
+                result.Metrics.MaxDepth,
+                result.Metrics.TotalAmount,
+                result.Metrics.Currency
+            },
+            exportedPayments = result.ExportedPayments.Select(entry => new
+            {
+                entry.Path,
+                entry.Amount,
+                entry.Currency
+            }),
+            explanation = result.Explanation
+        });
+    })
+        .WithSummary("Ruleaza demo-ul Visitor pe structura Composite de plati")
+        .WithDescription("Aplica doua operatii noi pe aceeasi ierarhie de batch-uri si plati: calcularea metricilor si exportul liniar al elementelor, fara a modifica logica de business a structurii.");
 
     patternsApi.MapGet("/adapter-demo", () =>
     {
