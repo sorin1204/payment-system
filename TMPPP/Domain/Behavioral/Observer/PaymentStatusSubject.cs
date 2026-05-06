@@ -61,6 +61,11 @@ public sealed class PaymentStatusSubject
                 payment.MarkFailed();
                 return;
             case PaymentStatus.Refunded:
+                if (payment.Status == PaymentStatus.Pending)
+                {
+                    payment.MarkProcessed();
+                }
+
                 payment.MarkRefunded();
                 return;
             default:

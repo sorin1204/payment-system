@@ -5,6 +5,7 @@ using TMPPP.Domain.Interfaces;
 using TMPPP.Domain.Processors;
 using TMPPP.Domain.Services;
 using TMPPP.Domain.ValueObjects;
+using TMPPP.Domain.Behavioral.State;
 
 namespace TMPPP.Controllers;
 
@@ -46,14 +47,16 @@ public static class ChainController
     {
         switch (status)
         {
+            case PaymentStatus.Pending:
+                return;
             case PaymentStatus.Processed:
-                payment.MarkProcessed();
+                payment.ForceState(PaymentStateFactory.Create(PaymentStatus.Processed));
                 break;
             case PaymentStatus.Failed:
-                payment.MarkFailed();
+                payment.ForceState(PaymentStateFactory.Create(PaymentStatus.Failed));
                 break;
             case PaymentStatus.Refunded:
-                payment.MarkRefunded();
+                payment.ForceState(PaymentStateFactory.Create(PaymentStatus.Refunded));
                 break;
         }
     }

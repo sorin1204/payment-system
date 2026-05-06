@@ -18,9 +18,12 @@ public sealed class PaymentProcessor : IPaymentProcessor
     {
         if (!method.Supports(payment.Amount))
         {
-            payment.MarkFailed();
+            var failedTransition = payment.MarkFailed();
             _paymentRepository.Update(payment);
-            return new PaymentResult(false, "Payment method does not support amount.");
+            return new PaymentResult(
+                false,
+                $"Payment method does not support amount. {failedTransition.Message}",
+                "unsupported_amount");
         }
 
         var result = method.Process(payment);

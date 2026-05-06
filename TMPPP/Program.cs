@@ -375,6 +375,41 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
         .WithSummary("Ruleaza demo-ul Chain of Responsibility pentru procesarea unei plati")
         .WithDescription("Simuleaza scenarii de procesare si afiseaza in Swagger fiecare handler din lant, in ordinea in care cererea a fost evaluata.");
 
+    patternsApi.MapPost("/state-demo", ([FromBody] StateDemoRequest request) =>
+    {
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+        var actions = request.Actions?.Where(x => !string.IsNullOrWhiteSpace(x)).ToList()
+            ?? ["process-succeeded", "refund-requested"];
+
+        if (request.Amount <= 0)
+        {
+            return Results.BadRequest(new { error = "Amount must be greater than 0." });
+        }
+
+        try
+        {
+            var result = StateController.BuildPaymentStateDemo(
+                ResolveStateStatus(request.InitialStatus),
+                request.Amount,
+                currency,
+                actions);
+
+            return Results.Ok(new
+            {
+                pattern = "State",
+                category = "Behavioral",
+                context = "Payment lifecycle",
+                demo = result
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+        .WithSummary("Ruleaza demo-ul State pentru ciclul de viata al unei plati")
+        .WithDescription("Arata cum obiectul Payment isi schimba comportamentul in functie de starea interna si cum fiecare clasa de stare decide tranzitiile permise.");
+
     patternsApi.MapGet("/adapter-demo", () =>
     {
         var request = new PaymentRequest(249.99m, "RON", "Laborator structural patterns");
@@ -825,6 +860,17 @@ static PaymentStatus ResolvePaymentStatus(string? status)
     };
 }
 
+static PaymentStatus ResolveStateStatus(string? status)
+{
+    return status?.Trim().ToLowerInvariant() switch
+    {
+        "processed" => PaymentStatus.Processed,
+        "failed" => PaymentStatus.Failed,
+        "refunded" => PaymentStatus.Refunded,
+        _ => PaymentStatus.Pending
+    };
+}
+
 static PaymentStatus ResolveChainPaymentStatus(string? status)
 {
     return status?.Trim().ToLowerInvariant() switch
@@ -849,7 +895,9 @@ static PaymentDto ToPaymentDto(Payment payment)
         payment.Amount.Amount,
         payment.Amount.Currency,
         payment.CreatedAt,
-        payment.Status.ToString());
+        payment.Status.ToString(),
+        payment.StateName,
+        payment.GetAvailableActions().ToList());
 }
 
 static object ToChainStepDto(PaymentChainStep step)
@@ -969,6 +1017,12 @@ internal sealed record ChainDemoRequest(
     decimal Amount,
     string? Currency);
 
+internal sealed record StateDemoRequest(
+    string InitialStatus,
+    decimal Amount,
+    string? Currency,
+    List<string>? Actions);
+
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
 internal sealed record CompositeGroupRequest(string GroupName, List<CompositePaymentRequest>? Payments);
@@ -985,4 +1039,12 @@ internal sealed record FacadeCheckoutApiRequest(
 
 internal sealed record InvoiceDto(Guid Id, Guid CustomerId, decimal TotalAmount, string Currency, DateTime DueDateUtc);
 
-internal sealed record PaymentDto(Guid Id, Guid InvoiceId, decimal Amount, string Currency, DateTime CreatedAtUtc, string Status);
+internal sealed record PaymentDto(
+    Guid Id,
+    Guid InvoiceId,
+    decimal Amount,
+    string Currency,
+    DateTime CreatedAtUtc,
+    string Status,
+    string State,
+    IReadOnlyCollection<string> AvailableActions);
