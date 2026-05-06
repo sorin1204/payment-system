@@ -4,6 +4,7 @@ using TMPPP.Controllers;
 using TMPPP.Domain.Behavioral.Chain;
 using TMPPP.Domain.Behavioral.Command;
 using TMPPP.Domain.Behavioral.Iterator;
+using TMPPP.Domain.Behavioral.Mediator;
 using TMPPP.Domain.Behavioral.Memento;
 using TMPPP.Domain.Behavioral.Observer;
 using TMPPP.Domain.Entities;
@@ -409,6 +410,59 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
     })
         .WithSummary("Ruleaza demo-ul State pentru ciclul de viata al unei plati")
         .WithDescription("Arata cum obiectul Payment isi schimba comportamentul in functie de starea interna si cum fiecare clasa de stare decide tranzitiile permise.");
+
+    patternsApi.MapPost("/mediator-demo", ([FromBody] MediatorDemoRequest request) =>
+    {
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+
+        if (request.Amount <= 0)
+        {
+            return Results.BadRequest(new { error = "Amount must be greater than 0." });
+        }
+
+        try
+        {
+            var result = MediatorController.BuildPaymentMediatorDemo(
+                request.Amount,
+                currency,
+                request.Method,
+                ResolveFraudDecision(request.FraudDecision));
+
+            return Results.Ok(new
+            {
+                pattern = "Mediator",
+                category = "Behavioral",
+                domain = "Payment workflow coordination",
+                paymentReference = result.PaymentReference,
+                amount = result.Amount,
+                result.Currency,
+                result.Method,
+                result.FinalStatus,
+                result.FraudReviewTriggered,
+                result.CustomerMessage,
+                timeline = result.Timeline.Select(entry => new
+                {
+                    entry.From,
+                    entry.To,
+                    entry.Event,
+                    entry.Message
+                }),
+                participants = result.Participants.Select(participant => new
+                {
+                    participant.Participant,
+                    participant.Status,
+                    participant.HandledEvents
+                }),
+                explanation = result.Explanation
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+        .WithSummary("Ruleaza demo-ul Mediator pentru coordonarea unei plati")
+        .WithDescription("Arata cum payment gateway, fraud review, accounting si customer notification nu comunica direct intre ele, ci doar printr-un mediator central.");
 
     patternsApi.MapGet("/adapter-demo", () =>
     {
@@ -871,6 +925,16 @@ static PaymentStatus ResolveStateStatus(string? status)
     };
 }
 
+static PaymentFraudDecision ResolveFraudDecision(string? decision)
+{
+    return decision?.Trim().ToLowerInvariant() switch
+    {
+        "approve" => PaymentFraudDecision.Approve,
+        "reject" => PaymentFraudDecision.Reject,
+        _ => PaymentFraudDecision.Auto
+    };
+}
+
 static PaymentStatus ResolveChainPaymentStatus(string? status)
 {
     return status?.Trim().ToLowerInvariant() switch
@@ -1022,6 +1086,12 @@ internal sealed record StateDemoRequest(
     decimal Amount,
     string? Currency,
     List<string>? Actions);
+
+internal sealed record MediatorDemoRequest(
+    string Method,
+    decimal Amount,
+    string? Currency,
+    string? FraudDecision);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
