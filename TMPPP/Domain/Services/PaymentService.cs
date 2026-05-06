@@ -1,3 +1,4 @@
+using TMPPP.Domain.Behavioral.Chain;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Interfaces;
 using TMPPP.Domain.ValueObjects;
@@ -7,8 +8,7 @@ namespace TMPPP.Domain.Services;
 public sealed class PaymentService : IPaymentService
 {
     private readonly IPaymentRepository _paymentRepository;
-    private readonly IInvoiceRepository _invoiceRepository;
-    private readonly IPaymentProcessor _paymentProcessor;
+    private readonly IPaymentHandler _paymentProcessingChain;
 
     public PaymentService(
         IPaymentRepository paymentRepository,
@@ -16,8 +16,18 @@ public sealed class PaymentService : IPaymentService
         IPaymentProcessor paymentProcessor)
     {
         _paymentRepository = paymentRepository;
-        _invoiceRepository = invoiceRepository;
-        _paymentProcessor = paymentProcessor;
+        var loadPayment = new LoadPaymentHandler(paymentRepository);
+        var validateInvoice = new InvoiceValidationHandler(invoiceRepository);
+        var validatePending = new PendingPaymentHandler();
+        var validateMethod = new PaymentMethodSupportHandler();
+        var executePayment = new PaymentExecutionHandler(paymentProcessor);
+
+        loadPayment.SetNext(validateInvoice)
+            .SetNext(validatePending)
+            .SetNext(validateMethod)
+            .SetNext(executePayment);
+
+        _paymentProcessingChain = loadPayment;
     }
 
     public Payment CreatePayment(Guid invoiceId, Money amount)
@@ -29,13 +39,7 @@ public sealed class PaymentService : IPaymentService
 
     public PaymentResult ProcessPayment(Guid paymentId, IPaymentMethod method)
     {
-        var payment = _paymentRepository.GetById(paymentId)
-            ?? throw new InvalidOperationException("Payment not found.");
-
-        var invoice = _invoiceRepository.GetById(payment.InvoiceId)
-            ?? throw new InvalidOperationException("Invoice not found.");
-
-        _invoiceRepository.Update(invoice);
-        return _paymentProcessor.Process(payment, method);
+        var context = new PaymentChainContext(paymentId, method);
+        return _paymentProcessingChain.Handle(context);
     }
 }

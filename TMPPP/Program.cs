@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using TMPPP.Controllers;
+using TMPPP.Domain.Behavioral.Chain;
 using TMPPP.Domain.Behavioral.Command;
 using TMPPP.Domain.Behavioral.Iterator;
 using TMPPP.Domain.Behavioral.Memento;
@@ -331,6 +332,49 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
         .WithSummary("Ruleaza demo-ul Iterator pentru parcurgerea unui lot de plati")
         .WithDescription("Demonstreaza parcurgerea secventiala a unei colectii de plati printr-un iterator dedicat, fara a expune structura interna a colectiei.");
 
+    patternsApi.MapPost("/chain-demo", ([FromBody] ChainDemoRequest request) =>
+    {
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+
+        try
+        {
+            var result = ChainController.BuildPaymentChainDemo(
+                request.PaymentExists,
+                request.InvoiceExists,
+                ResolveChainPaymentStatus(request.InitialStatus),
+                request.Amount,
+                currency,
+                request.Method);
+
+            return Results.Ok(new
+            {
+                pattern = "Chain of Responsibility",
+                category = "Behavioral",
+                request = new
+                {
+                    request.PaymentExists,
+                    request.InvoiceExists,
+                    initialStatus = request.InitialStatus,
+                    request.Method,
+                    request.Amount,
+                    currency
+                },
+                success = result.Success,
+                result.Message,
+                result.FailureCode,
+                chain = result.ChainTrace.Select(ToChainStepDto),
+                explanation =
+                    "Cererea trece printr-un lant ierarhic de handleri: incarcarea platii, validarea facturii, verificarea starii, compatibilitatea metodei si executia finala. Fiecare handler poate opri cererea sau o poate trimite mai departe."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+        .WithSummary("Ruleaza demo-ul Chain of Responsibility pentru procesarea unei plati")
+        .WithDescription("Simuleaza scenarii de procesare si afiseaza in Swagger fiecare handler din lant, in ordinea in care cererea a fost evaluata.");
+
     patternsApi.MapGet("/adapter-demo", () =>
     {
         var request = new PaymentRequest(249.99m, "RON", "Laborator structural patterns");
@@ -613,20 +657,42 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
             var result = paymentService.ProcessPayment(paymentId, method);
             var payment = paymentRepository.GetById(paymentId);
 
+            if (!result.Success && (result.FailureCode == "payment_not_found" || result.FailureCode == "invoice_not_found"))
+            {
+                return Results.NotFound(new
+                {
+                    result.Success,
+                    result.Message,
+                    result.FailureCode,
+                    chain = result.ChainTrace.Select(ToChainStepDto),
+                    payment = payment is null ? null : ToPaymentDto(payment)
+                });
+            }
+
+            if (!result.Success)
+            {
+                return Results.BadRequest(new
+                {
+                    result.Success,
+                    result.Message,
+                    result.FailureCode,
+                    chain = result.ChainTrace.Select(ToChainStepDto),
+                    payment = payment is null ? null : ToPaymentDto(payment)
+                });
+            }
+
             return Results.Ok(new
             {
                 result.Success,
                 result.Message,
+                result.FailureCode,
+                chain = result.ChainTrace.Select(ToChainStepDto),
                 payment = payment is null ? null : ToPaymentDto(payment)
             });
         }
         catch (ArgumentException ex)
         {
             return Results.BadRequest(new { error = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Results.NotFound(new { error = ex.Message });
         }
     });
 
@@ -759,6 +825,17 @@ static PaymentStatus ResolvePaymentStatus(string? status)
     };
 }
 
+static PaymentStatus ResolveChainPaymentStatus(string? status)
+{
+    return status?.Trim().ToLowerInvariant() switch
+    {
+        "processed" => PaymentStatus.Processed,
+        "failed" => PaymentStatus.Failed,
+        "refunded" => PaymentStatus.Refunded,
+        _ => PaymentStatus.Pending
+    };
+}
+
 static InvoiceDto ToInvoiceDto(Invoice invoice)
 {
     return new InvoiceDto(invoice.Id, invoice.CustomerId, invoice.Total.Amount, invoice.Total.Currency, invoice.DueDate);
@@ -773,6 +850,16 @@ static PaymentDto ToPaymentDto(Payment payment)
         payment.Amount.Currency,
         payment.CreatedAt,
         payment.Status.ToString());
+}
+
+static object ToChainStepDto(PaymentChainStep step)
+{
+    return new
+    {
+        step.Handler,
+        step.Outcome,
+        step.Message
+    };
 }
 
 static object ToPaymentComponentDto(IPaymentComponent component)
@@ -873,6 +960,14 @@ internal sealed record MementoDemoRequest(
     string? RestoreVersion);
 
 internal sealed record IteratorDemoRequest(int TakeCount);
+
+internal sealed record ChainDemoRequest(
+    bool PaymentExists,
+    bool InvoiceExists,
+    string InitialStatus,
+    string Method,
+    decimal Amount,
+    string? Currency);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
