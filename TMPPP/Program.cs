@@ -7,6 +7,7 @@ using TMPPP.Domain.Behavioral.Iterator;
 using TMPPP.Domain.Behavioral.Mediator;
 using TMPPP.Domain.Behavioral.Memento;
 using TMPPP.Domain.Behavioral.Observer;
+using TMPPP.Domain.Behavioral.TemplateMethod;
 using TMPPP.Domain.Entities;
 using TMPPP.Domain.Enums;
 using TMPPP.Domain.Factories;
@@ -463,6 +464,48 @@ void RunApi(string[] runArgs, string rootPath, string defaultConnectionString)
     })
         .WithSummary("Ruleaza demo-ul Mediator pentru coordonarea unei plati")
         .WithDescription("Arata cum payment gateway, fraud review, accounting si customer notification nu comunica direct intre ele, ci doar printr-un mediator central.");
+
+    patternsApi.MapPost("/template-method-demo", ([FromBody] TemplateMethodDemoRequest request) =>
+    {
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "RON" : request.Currency.Trim().ToUpperInvariant();
+
+        if (request.Amount <= 0)
+        {
+            return Results.BadRequest(new { error = "Amount must be greater than 0." });
+        }
+
+        try
+        {
+            var result = TemplateMethodController.BuildPaymentTemplateMethodDemo(
+                request.Amount,
+                currency,
+                request.Method);
+
+            return Results.Ok(new
+            {
+                pattern = "Template Method",
+                category = "Behavioral",
+                result.Template,
+                result.PaymentReference,
+                result.Amount,
+                result.Currency,
+                result.Method,
+                steps = result.Steps.Select(step => new
+                {
+                    step.Step,
+                    step.Detail
+                }),
+                result.Outcome,
+                explanation = result.Explanation
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+    })
+        .WithSummary("Ruleaza demo-ul Template Method pentru metodele de plata")
+        .WithDescription("Arata un algoritm comun de procesare a unei plati, in care clasa de baza fixeaza ordinea pasilor, iar card, bank si cash personalizeaza executia concreta.");
 
     patternsApi.MapGet("/adapter-demo", () =>
     {
@@ -1092,6 +1135,11 @@ internal sealed record MediatorDemoRequest(
     decimal Amount,
     string? Currency,
     string? FraudDecision);
+
+internal sealed record TemplateMethodDemoRequest(
+    string Method,
+    decimal Amount,
+    string? Currency);
 
 internal sealed record BuildCompositeBatchRequest(string BatchName, string? Currency, List<CompositeGroupRequest>? Groups);
 
